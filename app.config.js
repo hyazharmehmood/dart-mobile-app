@@ -1,0 +1,43 @@
+const googleMapsApiKey = process.env.EXPO_PUBLIC_GOOGLE_MAPS_API_KEY || "";
+
+module.exports = {
+  expo: {
+    name: "dart",
+    slug: "food-delivery-app",
+    version: "1.0.0",
+    orientation: "portrait",
+    icon: "./assets/logo.png",
+    userInterfaceStyle: "light",
+    newArchEnabled: true,
+    splash: {
+      image: "./assets/splash-logo.png",
+      resizeMode: "contain",
+      backgroundColor: "#ffffff"
+    },
+    ios: {
+      supportsTablet: true,
+      bundleIdentifier: "com.azhar.fooddelivery",
+      infoPlist: {
+        NSLocationWhenInUseUsageDescription:
+          "Allow dart to use your location for nearby restaurants and delivery."
+      },
+      config: {
+        googleMapsApiKey
+      }
+    },
+    android: {
+      package: "com.azhar.fooddelivery",
+      adaptiveIcon: {
+        foregroundImage: "./assets/logo.png",
+        backgroundColor: "#FF6400"
+      },
+      config: {
+        googleMaps: {
+          apiKey: googleMapsApiKey
+        }
+      },
+      permissions: ["ACCESS_FINE_LOCATION", "ACCESS_COARSE_LOCATION"],
+      edgeToEdgeEnabled: true
+    }
+  }
+};
