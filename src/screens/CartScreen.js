@@ -200,8 +200,16 @@ export default function CartScreen({ navigation }) {
   };
 
   const handleQuantity = async (index, quantity) => {
-    updateQuantity(index, quantity);
-    await refreshQuote();
+    try {
+      await updateQuantity(index, quantity);
+      await refreshQuote();
+    } catch (error) {
+      showToast({
+        type: "error",
+        title: "Cart update failed",
+        message: "Please try again in a moment."
+      });
+    }
   };
 
   const handleRecommendationAdd = async (item) => {
@@ -213,7 +221,7 @@ export default function CartScreen({ navigation }) {
     setAddingRecommendationId(item.id);
 
     try {
-      addItem({
+      await addItem({
         menuItemId: item.id,
         name: item.name,
         imageUrl: item.imageUrl,

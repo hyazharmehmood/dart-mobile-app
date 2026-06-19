@@ -1,0 +1,19 @@
+meta {
+  name: Clear Customer Cart
+  type: http
+  seq: 4
+}
+
+delete {
+  url: {{baseUrl}}/api/customer/cart
+  body: none
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{customerAccessToken}}
+}
+
+docs {
+  Removes all cart lines and clears restaurant/branch context.
+}

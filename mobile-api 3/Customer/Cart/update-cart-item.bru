@@ -1,0 +1,29 @@
+meta {
+  name: Update Cart Item
+  type: http
+  seq: 3
+}
+
+patch {
+  url: {{baseUrl}}/api/customer/cart/items/{{cartItemId}}
+  body: json
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{customerAccessToken}}
+}
+
+headers {
+  Content-Type: application/json
+}
+
+body:json {
+  {
+    "quantity": 2
+  }
+}
+
+docs {
+  Updates quantity for a cart line. Set quantity to 0 to remove the line.
+}

@@ -15,6 +15,7 @@ import SignupScreen from "../screens/SignupScreen";
 import SplashScreen from "../screens/SplashScreen";
 import useAddressStore from "../store/useAddressStore";
 import useAuthStore from "../store/useAuthStore";
+import useCartStore from "../store/useCartStore";
 
 const Stack = createNativeStackNavigator();
 
@@ -26,6 +27,8 @@ export default function AppNavigator() {
   const finishRestore = useAuthStore((state) => state.finishRestore);
   const logout = useAuthStore((state) => state.logout);
   const setFromProfile = useAddressStore((state) => state.setFromProfile);
+  const hydrateServerCart = useCartStore((state) => state.hydrateServerCart);
+  const resetLocalCartState = useCartStore((state) => state.resetLocalCartState);
 
   useEffect(() => {
     setUnauthorizedHandler(() => {
@@ -58,6 +61,15 @@ export default function AppNavigator() {
       clearTimeout(timeout);
     };
   }, [finishRestore, restoreSession, setFromProfile]);
+
+  useEffect(() => {
+    if (user && !isGuest) {
+      hydrateServerCart().catch(() => {});
+      return;
+    }
+
+    resetLocalCartState();
+  }, [hydrateServerCart, isGuest, resetLocalCartState, user]);
 
   if (isRestoring) {
     return (

@@ -1,0 +1,37 @@
+meta {
+  name: Add Cart Item
+  type: http
+  seq: 2
+}
+
+post {
+  url: {{baseUrl}}/api/customer/cart/items
+  body: json
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{customerAccessToken}}
+}
+
+headers {
+  Content-Type: application/json
+}
+
+body:json {
+  {
+    "restaurantSlug": "{{restaurantSlug}}",
+    "branchId": "{{branchId}}",
+    "menuItemId": "{{menuItemId}}",
+    "quantity": 1,
+    "modifierSelections": [],
+    "specialInstructions": "",
+    "unavailablePreference": "REMOVE_ITEM",
+    "replaceCart": false
+  }
+}
+
+docs {
+  Adds or merges a configured menu item into the customer cart.
+  Set replaceCart to true when switching restaurants.
+}

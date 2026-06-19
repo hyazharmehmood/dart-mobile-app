@@ -1,0 +1,30 @@
+meta {
+  name: Update Cart Branch
+  type: http
+  seq: 5
+}
+
+patch {
+  url: {{baseUrl}}/api/customer/cart
+  body: json
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{customerAccessToken}}
+}
+
+headers {
+  Content-Type: application/json
+}
+
+body:json {
+  {
+    "branchId": "{{branchId}}",
+    "restaurantSlug": "{{restaurantSlug}}"
+  }
+}
+
+docs {
+  Updates the active branch for the current cart.
+}

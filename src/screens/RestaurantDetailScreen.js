@@ -8,6 +8,7 @@ import {
   StatusBar,
   Text,
   TextInput,
+  useWindowDimensions,
   View
 } from "react-native";
 import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
@@ -18,6 +19,7 @@ import { getRestaurantMenu } from "../services/restaurantService";
 import useCartStore from "../store/useCartStore";
 
 const STICKY_MENU_SCROLL_OFFSET = 132;
+const STICKY_PIN_HYSTERESIS = 18;
 
 function money(value = 0) {
   const amount = Number(value) || 0;
@@ -147,7 +149,7 @@ function StickyMenuHeader({
     <View
       className={`${isPinned ? "" : "rounded-t-3xl"} border-b border-border bg-white px-5 pb-2`}
       onLayout={onLayout}
-      style={{ paddingTop: isPinned ? safeTop + 12 : 22 }}
+      style={{ paddingTop: safeTop + 12 }}
     >
       <View className="flex-row items-center">
         {isPinned ? (
@@ -230,7 +232,7 @@ function MenuSearchOverlay({ onClose, onSearchChange, searchQuery, visible }) {
   return (
     <Modal visible={visible} transparent animationType="fade" onRequestClose={onClose}>
       <View className="flex-1 bg-black/55">
-        <SafeAreaView className="bg-white px-5 pb-6 pt-4" style={{ borderBottomLeftRadius: 18, borderBottomRightRadius: 18 }}>
+        <SafeAreaView className="bg-white px-5 pb-6 " style={{ borderBottomLeftRadius: 18, borderBottomRightRadius: 18 }}>
           <StatusBar barStyle="dark-content" backgroundColor="#FFFFFF" />
           <View className="flex-row items-center">
             <Pressable onPress={onClose} className="mr-3 h-11 w-11 items-center justify-center rounded-full bg-white">
@@ -375,6 +377,8 @@ function SelectionCircle({ selected }) {
 }
 
 function ItemVariationModal({ item, visible, onClose, onConfirm, isSubmitting }) {
+  const { height } = useWindowDimensions();
+  const insets = useSafeAreaInsets();
   const [quantity, setQuantity] = useState(1);
   const [selections, setSelections] = useState({});
 
@@ -397,6 +401,8 @@ function ItemVariationModal({ item, visible, onClose, onConfirm, isSubmitting })
   const modifierTotal = selectedOptions.reduce((sum, option) => sum + (Number(option.priceDelta) || 0), 0);
   const unitPrice = (Number(item.price) || 0) + modifierTotal;
   const isReady = requiredGroups(item).every((group) => (selections[group.id] || []).length >= (group.minSelections || 1));
+  const sheetHeight = Math.min(Math.max(height * 0.58, 420), height * 0.68);
+  const footerBottomPadding = Math.max(insets.bottom, 16);
 
   const toggleOption = (group, option) => {
     setSelections((current) => {
@@ -430,97 +436,95 @@ function ItemVariationModal({ item, visible, onClose, onConfirm, isSubmitting })
   };
 
   return (
-    <Modal visible={visible} animationType="slide" onRequestClose={onClose}>
-      <SafeAreaView className="flex-1 bg-white">
-        <StatusBar barStyle="light-content" backgroundColor="#111111" />
-        <ScrollView className="flex-1" contentContainerStyle={{ paddingBottom: 116 }}>
-          <View>
-            {getItemImage(item) ? (
-              <Image source={{ uri: getItemImage(item) }} className="h-64 w-full" resizeMode="cover" />
-            ) : (
-              <View className="h-64 w-full items-center justify-center bg-[#EEF0F2]">
-                <Ionicons name="fast-food-outline" size={38} color="#9CA3AF" />
-              </View>
-            )}
-            <Pressable
-              onPress={onClose}
-              className="absolute left-5 top-5 h-10 w-10 items-center justify-center rounded-full bg-white"
-            >
-              <Ionicons name="arrow-back" size={24} color="#1F2933" />
-            </Pressable>
+    <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
+      <View className="flex-1 justify-end bg-black/45">
+        <Pressable className="flex-1" onPress={onClose} />
+        <View className="overflow-hidden rounded-t-3xl bg-white" style={{ height: sheetHeight }}>
+          <View className="items-center pt-3">
+            <View className="h-1.5 w-12 rounded-full bg-[#D1D5DB]" />
           </View>
 
-          <View className="border-b border-border px-5 py-4">
+          <View className="border-b border-border px-5 pb-4 pt-3">
             <View className="flex-row items-start justify-between">
               <View className="flex-1 pr-4">
-                <Text className="text-xl font-extrabold text-black">{item.name}</Text>
+                <Text className="text-lg font-bold text-ink">{item.name}</Text>
                 <Text className="mt-2 text-sm leading-5 text-muted" numberOfLines={2}>
                   {item.description || "Freshly prepared with quality ingredients."}
                 </Text>
               </View>
-              <Text className="text-lg font-extrabold text-black">{money(unitPrice)}</Text>
-            </View>
-          </View>
-
-          {groups.map((group) => (
-            <View key={group.id} className="border-b border-border px-5 py-5">
-              <View className="mb-4 flex-row items-center justify-between">
-                <Text className="text-lg font-extrabold text-black">{group.name}</Text>
-                {group.isRequired || group.minSelections > 0 ? (
-                  <View className="rounded-full bg-[#FFF0E5] px-3 py-1">
-                    <Text className="text-xs font-bold text-primary">Required</Text>
-                  </View>
-                ) : null}
+              <View className="items-end">
+                <Pressable onPress={onClose} className="mb-3 h-9 w-9 items-center justify-center rounded-full bg-[#F6F7F8]">
+                  <Ionicons name="close" size={20} color="#1F2933" />
+                </Pressable>
+                <Text className="text-base font-bold text-primary">{money(unitPrice)}</Text>
               </View>
-              {(group.options || []).map((option) => {
-                const selected = (selections[group.id] || []).includes(option.id);
-                return (
-                  <Pressable
-                    key={option.id}
-                    onPress={() => toggleOption(group, option)}
-                    className="mb-4 flex-row items-center"
-                  >
-                    <Text className="flex-1 text-base text-black">
-                      {option.name}{" "}
-                      {Number(option.priceDelta) ? (
-                        <Text className="text-muted">{money(option.priceDelta)}</Text>
-                      ) : null}
-                    </Text>
-                    <SelectionCircle selected={selected} />
-                  </Pressable>
-                );
-              })}
             </View>
-          ))}
-        </ScrollView>
-
-        <View className="absolute bottom-0 left-0 right-0 flex-row items-center border-t border-border bg-white px-5 pb-6 pt-4">
-          <View className="mr-3 h-12 flex-row items-center rounded-2xl border border-border bg-[#FAFAFA]">
-            <Pressable
-              onPress={() => setQuantity((value) => Math.max(1, value - 1))}
-              className="h-12 w-11 items-center justify-center"
-            >
-              <Ionicons name="remove" size={20} color="#9CA3AF" />
-            </Pressable>
-            <View className="h-8 min-w-[34px] items-center justify-center rounded-full bg-white px-2">
-              <Text className="text-base font-extrabold text-ink">{quantity}</Text>
-            </View>
-            <Pressable
-              onPress={() => setQuantity((value) => value + 1)}
-              className="h-12 w-11 items-center justify-center"
-            >
-              <Ionicons name="add" size={22} color="#FF6400" />
-            </Pressable>
           </View>
-          <Button
-            title={`Add to cart ${money(unitPrice * quantity)}`}
-            onPress={confirm}
-            loading={isSubmitting}
-            disabled={!isReady || isSubmitting}
-            className="flex-1 rounded-2xl"
-          />
+
+          <ScrollView className="flex-1" showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 12 }}>
+            {groups.map((group) => (
+              <View key={group.id} className="border-b border-border px-5 py-5">
+                <View className="mb-4 flex-row items-center justify-between">
+                  <Text className="text-base font-bold text-ink">{group.name}</Text>
+                  {group.isRequired || group.minSelections > 0 ? (
+                    <View className="rounded-full bg-[#FFF0E5] px-3 py-1">
+                      <Text className="text-xs font-bold text-primary">Required</Text>
+                    </View>
+                  ) : null}
+                </View>
+                {(group.options || []).map((option) => {
+                  const selected = (selections[group.id] || []).includes(option.id);
+                  return (
+                    <Pressable
+                      key={option.id}
+                      onPress={() => toggleOption(group, option)}
+                      className="mb-4 min-h-[28px] flex-row items-center"
+                    >
+                      <Text className="flex-1 text-base text-ink">
+                        {option.name}{" "}
+                        {Number(option.priceDelta) ? (
+                          <Text className="text-muted">{money(option.priceDelta)}</Text>
+                        ) : null}
+                      </Text>
+                      <SelectionCircle selected={selected} />
+                    </Pressable>
+                  );
+                })}
+              </View>
+            ))}
+          </ScrollView>
+
+          <View
+            className="flex-row items-center border-t border-border bg-white px-5 pt-4"
+            style={{ paddingBottom: footerBottomPadding }}
+          >
+            <View className="mr-3 h-12 flex-row items-center rounded-2xl border border-border bg-[#FAFAFA]">
+              <Pressable
+                onPress={() => setQuantity((value) => Math.max(1, value - 1))}
+                className="h-12 w-11 items-center justify-center"
+              >
+                <Ionicons name="remove" size={20} color="#9CA3AF" />
+              </Pressable>
+              <View className="h-8 min-w-[34px] items-center justify-center rounded-full bg-white px-2">
+                <Text className="text-base font-bold text-ink">{quantity}</Text>
+              </View>
+              <Pressable
+                onPress={() => setQuantity((value) => value + 1)}
+                className="h-12 w-11 items-center justify-center"
+              >
+                <Ionicons name="add" size={22} color="#FF6400" />
+              </Pressable>
+            </View>
+            <Button
+              title={`Add to cart ${money(unitPrice * quantity)}`}
+              onPress={confirm}
+              loading={isSubmitting}
+              disabled={!isReady || isSubmitting}
+              className="flex-1 rounded-2xl"
+            />
+          </View>
         </View>
-      </SafeAreaView>
+      </View>
     </Modal>
   );
 }
@@ -541,6 +545,9 @@ export default function RestaurantDetailScreen({ navigation, route }) {
   const scrollRef = useRef(null);
   const sectionOffsetsRef = useRef({});
   const stickyHeaderYRef = useRef(0);
+  const viewportHeightRef = useRef(0);
+  const contentHeightRef = useRef(0);
+  const manualTabLockUntilRef = useRef(0);
   const addLockRef = useRef(false);
   const { showToast } = useToast();
   const setCartRestaurant = useCartStore((state) => state.setRestaurant);
@@ -645,6 +652,7 @@ export default function RestaurantDetailScreen({ navigation, route }) {
 
   useEffect(() => {
     sectionOffsetsRef.current = {};
+    stickyHeaderYRef.current = 0;
 
     const firstCategoryId = categories[0]?.id || null;
     setActiveCategoryId(firstCategoryId);
@@ -652,9 +660,24 @@ export default function RestaurantDetailScreen({ navigation, route }) {
 
   const handleMenuScroll = (event) => {
     const scrollY = event.nativeEvent.contentOffset.y;
-    const pinned = stickyHeaderYRef.current > 0 && scrollY >= stickyHeaderYRef.current - insets.top;
+    const maxScrollY = Math.max(contentHeightRef.current - viewportHeightRef.current, 0);
+    const pinAt = Math.max(stickyHeaderYRef.current - insets.top, 0);
 
-    setIsMenuPinned((current) => (current === pinned ? current : pinned));
+    setIsMenuPinned((current) => {
+      if (!stickyHeaderYRef.current) {
+        return current;
+      }
+
+      if (current) {
+        return scrollY > pinAt - STICKY_PIN_HYSTERESIS;
+      }
+
+      return scrollY >= pinAt + STICKY_PIN_HYSTERESIS;
+    });
+
+    if (Date.now() < manualTabLockUntilRef.current) {
+      return;
+    }
 
     const activationY = scrollY + stickyMenuOffset + 56;
     const orderedSections = categories
@@ -672,6 +695,17 @@ export default function RestaurantDetailScreen({ navigation, route }) {
       }
     }
 
+    if (maxScrollY > 0 && scrollY >= maxScrollY - 2) {
+      const closestSection = orderedSections.reduce(
+        (closest, section) => {
+          const distance = Math.abs(section[1] - activationY);
+          return distance < closest.distance ? { id: section[0], distance } : closest;
+        },
+        { id: nextCategoryId, distance: Number.POSITIVE_INFINITY }
+      );
+      nextCategoryId = closestSection.id;
+    }
+
     if (nextCategoryId && nextCategoryId !== activeCategoryId) {
       setActiveCategoryId(nextCategoryId);
     }
@@ -679,13 +713,15 @@ export default function RestaurantDetailScreen({ navigation, route }) {
 
   const handleCategoryPress = (categoryId) => {
     setActiveCategoryId(categoryId);
+    manualTabLockUntilRef.current = Date.now() + 650;
 
     const y = sectionOffsetsRef.current[categoryId];
+    const maxScrollY = Math.max(contentHeightRef.current - viewportHeightRef.current, 0);
 
     if (typeof y === "number") {
       requestAnimationFrame(() => {
         scrollRef.current?.scrollTo({
-          y: Math.max(y - stickyMenuOffset, 0),
+          y: Math.min(Math.max(y - stickyMenuOffset + 6, 0), maxScrollY),
           animated: true
         });
       });
@@ -696,7 +732,7 @@ export default function RestaurantDetailScreen({ navigation, route }) {
 
     if (index >= 0) {
       scrollRef.current?.scrollTo({
-        y: Math.max(stickyHeaderYRef.current + index * 360, 0),
+        y: Math.min(Math.max(stickyHeaderYRef.current + index * 360, 0), maxScrollY),
         animated: true
       });
     }
@@ -711,7 +747,7 @@ export default function RestaurantDetailScreen({ navigation, route }) {
     setAddingItemId(item.id);
 
     try {
-      addItem({
+      await addItem({
         menuItemId: item.id,
         name: item.name,
         imageUrl: item.imageUrl,
@@ -758,13 +794,13 @@ export default function RestaurantDetailScreen({ navigation, route }) {
   };
 
   const handleQuantityChange = async (index, quantity) => {
-    updateQuantity(index, quantity);
-
-    if (quantity <= 0) {
-      setActiveQuantityItemId(null);
-    }
-
     try {
+      await updateQuantity(index, quantity);
+
+      if (quantity <= 0) {
+        setActiveQuantityItemId(null);
+      }
+
       await loadQuote();
     } catch (error) {
       showToast({
@@ -784,7 +820,7 @@ export default function RestaurantDetailScreen({ navigation, route }) {
   const restaurantImage = getRestaurantImage(displayRestaurant);
 
   return (
-    <SafeAreaView className="flex-1 bg-white" edges={["bottom"]}>
+    <SafeAreaView className="flex-1 " edges={["bottom"]}>
       <StatusBar
         barStyle={isMenuPinned ? "dark-content" : "light-content"}
         translucent
@@ -804,6 +840,12 @@ export default function RestaurantDetailScreen({ navigation, route }) {
           contentContainerStyle={{ paddingBottom: cartCount ? 124 : 28 }}
           stickyHeaderIndices={isLoading && !restaurant ? [] : [2]}
           scrollEventThrottle={16}
+          onContentSizeChange={(_, height) => {
+            contentHeightRef.current = height;
+          }}
+          onLayout={(event) => {
+            viewportHeightRef.current = event.nativeEvent.layout.height;
+          }}
           onScroll={handleMenuScroll}
         >
           {isLoading && !restaurant ? <RestaurantHeaderSkeleton /> : null}
@@ -911,7 +953,9 @@ export default function RestaurantDetailScreen({ navigation, route }) {
                 onBack={() => navigation.goBack()}
                 onCategoryPress={handleCategoryPress}
                 onLayout={(event) => {
-                  stickyHeaderYRef.current = event.nativeEvent.layout.y;
+                  if (!stickyHeaderYRef.current) {
+                    stickyHeaderYRef.current = event.nativeEvent.layout.y;
+                  }
                 }}
                 onSearchPress={() => setIsSearchOpen(true)}
                 restaurantName={displayRestaurant.name}

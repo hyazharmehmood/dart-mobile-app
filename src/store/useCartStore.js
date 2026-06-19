@@ -1,6 +1,15 @@
 import { create } from "zustand";
 
+import {
+  addCustomerCartItem,
+  clearCustomerCart,
+  getCustomerCart,
+  removeCustomerCartItem,
+  updateCustomerCart,
+  updateCustomerCartItem
+} from "../services/customerCartService";
 import { quoteOrder } from "../services/orderService";
+import useAuthStore from "./useAuthStore";
 
 function itemKey(item) {
   return JSON.stringify({
@@ -21,26 +30,215 @@ function quoteItem(item) {
   };
 }
 
+function isAuthenticated() {
+  const authState = useAuthStore.getState();
+  return Boolean(authState.token && authState.isAuthenticated && !authState.isGuest);
+}
+
+function restaurantSlugFrom(restaurant) {
+  return restaurant?.slug || restaurant?.restaurantSlug || restaurant?.id || restaurant?.restaurantId || null;
+}
+
+function branchIdFrom(restaurant, fallbackBranchId = null) {
+  return (
+    fallbackBranchId ||
+    restaurant?.branchId ||
+    restaurant?.activeBranchId ||
+    restaurant?.defaultBranchId ||
+    restaurant?.branches?.[0]?.id ||
+    null
+  );
+}
+
+function restaurantFromCart(cart, currentRestaurant = null) {
+  return cart?.restaurant || cart?.store || currentRestaurant || null;
+}
+
+function normalizeServerItem(line) {
+  const menuItem = line?.menuItem || line?.item || {};
+  const customizations = line?.customizations || {};
+  const selections = customizations.selections || line?.modifierSelections || [];
+  const unitPrice = Number(line?.unitPriceSnapshot ?? line?.unitPrice ?? line?.basePrice ?? menuItem.price) || 0;
+
+  return {
+    id: line?.id || line?.cartItemId || line?.lineId || null,
+    cartItemId: line?.id || line?.cartItemId || line?.lineId || null,
+    menuItemId: line?.menuItemId || menuItem.id,
+    name: line?.name || menuItem.name || line?.displayName || "Menu item",
+    imageUrl: line?.imageUrl || menuItem.imageUrl || menuItem.photoUrls?.[0] || "",
+    basePrice: unitPrice,
+    quantity: Number(line?.quantity) || 1,
+    modifierSelections: selections,
+    specialInstructions: line?.specialInstructions || "",
+    unavailablePreference: line?.unavailablePreference || "REMOVE_ITEM",
+    configurationKey: line?.configurationKey || line?.lineId || null
+  };
+}
+
+function normalizeServerCart(data, currentRestaurant = null) {
+  const cart = data?.cart || data?.customerCart || data || null;
+
+  if (!cart || Array.isArray(cart)) {
+    return {
+      restaurant: currentRestaurant,
+      restaurantSlug: restaurantSlugFrom(currentRestaurant),
+      branchId: branchIdFrom(currentRestaurant),
+      items: []
+    };
+  }
+
+  const restaurant = restaurantFromCart(cart, currentRestaurant);
+  const items = (cart.items || cart.lineItems || cart.cartItems || []).map(normalizeServerItem);
+
+  return {
+    id: cart.id || null,
+    restaurant,
+    restaurantSlug: cart.restaurantSlug || restaurantSlugFrom(restaurant) || cart.restaurantId || null,
+    branchId: cart.branchId || branchIdFrom(restaurant),
+    items
+  };
+}
+
+function hasCartShape(data) {
+  const cart = data?.cart || data?.customerCart || data;
+  return Boolean(cart && !Array.isArray(cart) && (cart.items || cart.lineItems || cart.cartItems));
+}
+
+function cartPayload(item, restaurant, currentBranchId, replaceCart = false) {
+  return {
+    restaurantSlug: item.restaurantSlug || restaurantSlugFrom(restaurant),
+    branchId: item.branchId || branchIdFrom(restaurant, currentBranchId),
+    menuItemId: item.menuItemId,
+    quantity: item.quantity || 1,
+    modifierSelections: item.modifierSelections || [],
+    specialInstructions: item.specialInstructions || "",
+    unavailablePreference: item.unavailablePreference || "REMOVE_ITEM",
+    replaceCart
+  };
+}
+
+function quotePayload({ restaurantSlug, branchId, items }) {
+  if (isAuthenticated()) {
+    return {
+      useCart: true,
+      branchId,
+      restaurantSlug
+    };
+  }
+
+  return {
+    restaurantSlug,
+    items: items.map(quoteItem)
+  };
+}
+
 const useCartStore = create((set, get) => ({
+  id: null,
   restaurantSlug: null,
+  branchId: null,
   restaurant: null,
+  pendingReplaceCart: false,
   items: [],
   quote: null,
   isQuoting: false,
+  isHydrating: false,
+  isMutating: false,
   error: null,
   setRestaurant: (restaurant) => {
-    const nextSlug = restaurant?.slug || restaurant?.id || null;
+    const nextSlug = restaurantSlugFrom(restaurant);
     const currentSlug = get().restaurantSlug;
+    const nextBranchId = branchIdFrom(restaurant, get().branchId);
+    const shouldReplaceCart = Boolean(currentSlug && nextSlug && currentSlug !== nextSlug);
 
     set({
       restaurant,
       restaurantSlug: nextSlug,
-      items: currentSlug && currentSlug !== nextSlug ? [] : get().items,
-      quote: currentSlug && currentSlug !== nextSlug ? null : get().quote,
+      branchId: nextBranchId,
+      pendingReplaceCart: shouldReplaceCart || get().pendingReplaceCart,
+      items: shouldReplaceCart ? [] : get().items,
+      quote: shouldReplaceCart ? null : get().quote,
       error: null
     });
   },
-  addItem: (item) => {
+  hydrateServerCart: async () => {
+    if (!isAuthenticated()) {
+      return null;
+    }
+
+    set({ isHydrating: true, error: null });
+
+    try {
+      const data = await getCustomerCart();
+      const nextCart = normalizeServerCart(data, get().restaurant);
+
+      set({
+        id: nextCart.id,
+        restaurant: nextCart.restaurant,
+        restaurantSlug: nextCart.restaurantSlug,
+        branchId: nextCart.branchId,
+        pendingReplaceCart: false,
+        items: nextCart.items,
+        quote: null,
+        isHydrating: false
+      });
+
+      return nextCart;
+    } catch (error) {
+      set({
+        isHydrating: false,
+        error: error?.response?.data?.error || error?.message || "Unable to load cart"
+      });
+      throw error;
+    }
+  },
+  syncFromServerCart: (data) => {
+    const nextCart = normalizeServerCart(data, get().restaurant);
+
+    set({
+      id: nextCart.id,
+      restaurant: nextCart.restaurant || get().restaurant,
+      restaurantSlug: nextCart.restaurantSlug || get().restaurantSlug,
+      branchId: nextCart.branchId || get().branchId,
+      pendingReplaceCart: false,
+      items: nextCart.items,
+      quote: null,
+      error: null
+    });
+
+    return nextCart;
+  },
+  refreshServerCart: async (fallbackData = null) => {
+    if (hasCartShape(fallbackData)) {
+      return get().syncFromServerCart(fallbackData);
+    }
+
+    const data = await getCustomerCart();
+    return get().syncFromServerCart(data);
+  },
+  addItem: async (item) => {
+    if (isAuthenticated()) {
+      const currentSlug = get().restaurantSlug;
+      const nextSlug = item.restaurantSlug || restaurantSlugFrom(get().restaurant);
+      const replaceCart = get().pendingReplaceCart || Boolean(currentSlug && nextSlug && currentSlug !== nextSlug);
+
+      set({ isMutating: true, error: null });
+
+      try {
+        const data = await addCustomerCartItem(
+          cartPayload(item, get().restaurant, get().branchId, replaceCart)
+        );
+        const nextCart = await get().refreshServerCart(data);
+        set({ isMutating: false });
+        return nextCart;
+      } catch (error) {
+        set({
+          isMutating: false,
+          error: error?.response?.data?.error || error?.message || "Unable to update cart"
+        });
+        throw error;
+      }
+    }
+
     const nextKey = itemKey(item);
     const items = [...get().items];
     const existingIndex = items.findIndex((cartItem) => itemKey(cartItem) === nextKey);
@@ -59,27 +257,91 @@ const useCartStore = create((set, get) => ({
     }
 
     set({ items });
+    return items;
   },
-  updateQuantity: (index, quantity) => {
+  updateQuantity: async (index, quantity) => {
+    const item = get().items[index];
+
+    if (isAuthenticated() && item?.cartItemId) {
+      set({ isMutating: true, error: null });
+
+      try {
+        const data =
+          quantity <= 0
+            ? await removeCustomerCartItem(item.cartItemId)
+            : await updateCustomerCartItem(item.cartItemId, { quantity });
+        const nextCart = await get().refreshServerCart(data);
+        set({ isMutating: false });
+        return nextCart;
+      } catch (error) {
+        set({
+          isMutating: false,
+          error: error?.response?.data?.error || error?.message || "Unable to update quantity"
+        });
+        throw error;
+      }
+    }
+
     const items = get().items
       .map((item, itemIndex) => (itemIndex === index ? { ...item, quantity } : item))
       .filter((item) => item.quantity > 0);
 
     set({ items });
+    return items;
   },
-  clearCart: () =>
+  setBranch: async (branchId) => {
+    if (isAuthenticated()) {
+      const data = await updateCustomerCart({
+        branchId,
+        restaurantSlug: get().restaurantSlug
+      });
+      return get().refreshServerCart(data);
+    }
+
+    set({ branchId });
+    return null;
+  },
+  clearCart: async () => {
+    if (isAuthenticated()) {
+      try {
+        await clearCustomerCart();
+      } catch (error) {
+        set({ error: error?.response?.data?.error || error?.message || "Unable to clear cart" });
+        throw error;
+      }
+    }
+
     set({
+      id: null,
       restaurantSlug: null,
+      branchId: null,
       restaurant: null,
+      pendingReplaceCart: false,
       items: [],
       quote: null,
       isQuoting: false,
+      isMutating: false,
+      error: null
+    });
+  },
+  resetLocalCartState: () =>
+    set({
+      id: null,
+      restaurantSlug: null,
+      branchId: null,
+      restaurant: null,
+      pendingReplaceCart: false,
+      items: [],
+      quote: null,
+      isQuoting: false,
+      isHydrating: false,
+      isMutating: false,
       error: null
     }),
   loadQuote: async () => {
-    const { restaurantSlug, items } = get();
+    const { restaurantSlug, branchId, items } = get();
 
-    if (!restaurantSlug || !items.length) {
+    if ((!restaurantSlug && !isAuthenticated()) || !items.length) {
       set({ quote: null });
       return null;
     }
@@ -87,7 +349,7 @@ const useCartStore = create((set, get) => ({
     set({ isQuoting: true, error: null });
 
     try {
-      const data = await quoteOrder({ restaurantSlug, items: items.map(quoteItem) });
+      const data = await quoteOrder(quotePayload({ restaurantSlug, branchId, items }));
       set({ quote: data.quote, isQuoting: false });
       return data.quote;
     } catch (error) {

@@ -1,0 +1,19 @@
+meta {
+  name: Get Customer Cart
+  type: http
+  seq: 1
+}
+
+get {
+  url: {{baseUrl}}/api/customer/cart
+  body: none
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{customerAccessToken}}
+}
+
+docs {
+  Returns the authenticated customer's persisted cart with restaurant, branch, and line items.
+}
