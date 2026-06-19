@@ -40,23 +40,23 @@ function Step({ number, label, active }) {
   return (
     <View className="z-10 flex-1 items-center">
       <View
-        className={`h-10 w-10 items-center justify-center rounded-full ${
-          active ? "bg-primary" : "border-2 border-border bg-white"
+        className={`h-8 w-8 items-center justify-center rounded-full ${
+          active ? "bg-primary" : "border border-border bg-white"
         }`}
       >
-        <Text className={`text-sm font-extrabold ${active ? "text-white" : "text-muted"}`}>{number}</Text>
+        <Text className={`text-xs font-bold ${active ? "text-white" : "text-muted"}`}>{number}</Text>
       </View>
-      <Text className={`mt-2 text-xs font-bold ${active ? "text-ink" : "text-muted"}`}>{label}</Text>
+      <Text className={`mt-2 text-xs font-medium ${active ? "text-ink" : "text-muted"}`}>{label}</Text>
     </View>
   );
 }
 
 function CartStepper() {
   return (
-    <View className="px-5 pb-7 pt-4">
-      <View className="relative flex-row items-start">
-        <View className="absolute left-10 right-10 top-5 h-1 rounded-full bg-border" />
-        <View className="absolute left-10 right-1/2 top-5 h-1 rounded-full bg-primary" />
+    <View className=" pb-5 pt-4">
+      <View className="relative flex-row items-start rounded-2xl bg-[#F8F8F8] px-2 py-4">
+        <View className="absolute left-0 right-0 top-8 h-1 rounded-full bg-border" />
+        <View className="absolute left-0 right-1/2 top-8 h-1 rounded-full bg-primary" />
         <Step number="1" label="Menu" active />
         <Step number="2" label="Cart" active />
         <Step number="3" label="Checkout" />
@@ -67,18 +67,18 @@ function CartStepper() {
 
 function QuantityControl({ quantity, onMinus, onPlus }) {
   return (
-    <View className="h-11 flex-row items-center rounded-full border border-[#E5E7EB] bg-[#FAFAFA] px-1">
-      <Pressable onPress={onMinus} className="h-9 w-10 items-center justify-center rounded-full bg-white">
+    <View className="h-10 flex-row items-center rounded-full border border-[#E5E7EB] bg-white px-1 shadow-sm">
+      <Pressable onPress={onMinus} className="h-8 w-9 items-center justify-center rounded-full">
         <Ionicons
           name={quantity <= 1 ? "trash-outline" : "remove"}
           size={18}
           color={quantity <= 1 ? "#DC2626" : "#1F2933"}
         />
       </Pressable>
-      <View className="mx-1 h-9 min-w-[36px] items-center justify-center rounded-full bg-[#FFF0E5] px-2">
-        <Text className="text-base font-extrabold text-primary">{quantity}</Text>
+      <View className="mx-1 h-8 min-w-[34px] items-center justify-center rounded-full bg-[#FFF0E5] px-2">
+        <Text className="text-sm font-bold text-primary">{quantity}</Text>
       </View>
-      <Pressable onPress={onPlus} className="h-9 w-10 items-center justify-center rounded-full bg-white">
+      <Pressable onPress={onPlus} className="h-8 w-9 items-center justify-center rounded-full">
         <Ionicons name="add" size={21} color="#FF6400" />
       </Pressable>
     </View>
@@ -92,19 +92,22 @@ function CartItemRow({ item, index, quoteItem, onQuantity }) {
   );
 
   return (
-    <View className="flex-row border-b border-border px-5 py-5">
+    <View className="mx-5 mb-3 flex-row rounded-2xl bg-white p-3 shadow-sm">
       {itemImage(item) ? (
-        <Image source={{ uri: itemImage(item) }} className="mr-4 h-16 w-16 rounded-2xl" resizeMode="cover" />
+        <Image source={{ uri: itemImage(item) }} className="mr-3 h-20 w-20 rounded-2xl" resizeMode="cover" />
       ) : (
-        <View className="mr-4 h-16 w-16 items-center justify-center rounded-2xl bg-[#EEF0F2]">
+        <View className="mr-3 h-20 w-20 items-center justify-center rounded-2xl bg-[#EEF0F2]">
           <Ionicons name="fast-food-outline" size={22} color="#9CA3AF" />
         </View>
       )}
       <View className="flex-1">
-        <Text className="text-base font-extrabold text-ink" numberOfLines={2}>
+        <Text className="text-base font-bold leading-5 text-ink" numberOfLines={2}>
           {item.name}
         </Text>
-        <View className="mt-4 self-start">
+        <Text className="mt-1 text-xs text-muted" numberOfLines={1}>
+          {money(item.basePrice || 0)} each
+        </Text>
+        <View className="mt-3 self-start">
           <QuantityControl
             quantity={item.quantity}
             onMinus={() => onQuantity(index, item.quantity - 1)}
@@ -112,8 +115,8 @@ function CartItemRow({ item, index, quoteItem, onQuantity }) {
           />
         </View>
       </View>
-      <View className="ml-3 items-end justify-center">
-        <Text className="text-base font-extrabold text-primary">{lineTotal}</Text>
+      <View className="ml-2 items-end justify-center">
+        <Text className="text-base font-bold text-primary">{lineTotal}</Text>
         {Number(item.basePrice) ? (
           <Text className="mt-1 text-xs text-muted line-through">{money(item.basePrice * item.quantity * 1.2)}</Text>
         ) : null}
@@ -127,7 +130,7 @@ function RecommendationCard({ item, isAdding, onAdd }) {
 
   return (
     <View className="mr-4 w-36">
-      <View className="overflow-hidden rounded-2xl bg-[#F4F5F7]">
+      <View className="overflow-hidden rounded-2xl bg-[#F4F5F7] shadow-sm">
         {imageUrl ? (
           <Image source={{ uri: imageUrl }} className="h-32 w-full" resizeMode="cover" />
         ) : (
@@ -145,10 +148,10 @@ function RecommendationCard({ item, isAdding, onAdd }) {
           <Ionicons name="add" size={24} color="#1F2933" />
         </Pressable>
       </View>
-      <Text className="mt-3 text-sm font-extrabold text-ink" numberOfLines={1}>
+      <Text className="mt-3 text-sm font-bold text-primary" numberOfLines={1}>
         {money(item.price || item.basePrice)}
       </Text>
-      <Text className="mt-1 text-sm text-muted" numberOfLines={2}>
+      <Text className="mt-1 text-sm font-medium text-ink" numberOfLines={2}>
         {item.name}
       </Text>
     </View>
@@ -242,11 +245,11 @@ export default function CartScreen({ navigation }) {
         <StatusBar barStyle="dark-content" backgroundColor="#FFFFFF" />
         <View className="border-b border-border bg-white px-5 pb-4 pt-2">
           <View className="flex-row items-center">
-            <Pressable onPress={goBackToMenu} className="mr-4 h-11 w-11 items-center justify-center rounded-full bg-[#FFF0E5]">
-              <Ionicons name="close" size={26} color="#FF6400" />
+            <Pressable onPress={goBackToMenu} className="mr-3 h-10 w-10 items-center justify-center rounded-full bg-[#FFF0E5]">
+              <Ionicons name="close" size={24} color="#FF6400" />
             </Pressable>
             <View className="flex-1">
-              <Text className="text-2xl font-extrabold text-ink">Cart</Text>
+              <Text className="text-xl font-bold text-ink">Cart</Text>
               <Text className="mt-0.5 text-sm font-medium text-muted">Ready when you are</Text>
             </View>
           </View>
@@ -260,7 +263,7 @@ export default function CartScreen({ navigation }) {
               </View>
             </View>
 
-            <Text className="mt-8 text-center text-[26px] font-extrabold text-ink">Your cart is empty</Text>
+            <Text className="mt-8 text-center text-2xl font-bold text-ink">Your cart is empty</Text>
             <Text className="mt-3 max-w-[280px] text-center text-base leading-6 text-muted">
               Choose a restaurant and add your favorite meals here.
             </Text>
@@ -271,7 +274,7 @@ export default function CartScreen({ navigation }) {
                   <Ionicons name="restaurant-outline" size={20} color="#FF6400" />
                 </View>
                 <View className="flex-1">
-                  <Text className="text-sm font-extrabold text-ink">Start with a restaurant</Text>
+                  <Text className="text-sm font-bold text-ink">Start with a restaurant</Text>
                   <Text className="mt-1 text-xs leading-5 text-muted">
                     Browse nearby stores and your cart will update instantly.
                   </Text>
@@ -297,45 +300,43 @@ export default function CartScreen({ navigation }) {
       <StatusBar barStyle="dark-content" backgroundColor="#FFFFFF" />
       <View className="border-b border-border bg-white px-5 pb-4 pt-2">
         <View className="flex-row items-center">
-          <Pressable onPress={goBackToMenu} className="mr-4 h-11 w-11 items-center justify-center">
-            <Ionicons name="close" size={30} color="#1F2933" />
+          <Pressable onPress={goBackToMenu} className="mr-3 h-10 w-10 items-center justify-center rounded-full bg-[#F6F7F8]">
+            <Ionicons name="close" size={24} color="#1F2933" />
           </Pressable>
           <View className="flex-1">
-            <Text className="text-2xl font-extrabold text-ink">Cart</Text>
-            <Text className="mt-0.5 text-base text-ink" numberOfLines={1}>
+            <Text className="text-xl font-bold text-ink">Cart</Text>
+            <Text className="mt-0.5 text-sm font-medium text-muted" numberOfLines={1}>
               {restaurantName(restaurant)}
             </Text>
           </View>
         </View>
       </View>
 
-      <ScrollView className="flex-1" contentContainerStyle={{ paddingBottom: 124 }}>
+      <ScrollView className="flex-1 bg-[#F7F8FA]" contentContainerStyle={{ paddingBottom: 132 }}>
         <CartStepper />
 
-        <View className="mx-5 mb-5 rounded-full bg-[#EEF0F2] p-1">
+        <View className="mx-5 mb-4 rounded-full bg-[#EEF0F2] p-1">
           <View className="flex-row">
             <View className="h-12 flex-1 flex-row items-center justify-center rounded-full bg-white shadow-sm">
               <Ionicons name="bicycle" size={22} color="#1F2933" />
-              <Text className="ml-2 text-base font-extrabold text-ink">Delivery</Text>
+              <Text className="ml-2 text-base font-bold text-ink">Delivery</Text>
             </View>
             <View className="h-12 flex-1 flex-row items-center justify-center rounded-full">
               <Ionicons name="walk" size={22} color="#1F2933" />
-              <Text className="ml-2 text-base font-extrabold text-ink">Pick-up</Text>
-              <Text className="ml-2 text-xs font-extrabold text-primary">30% off</Text>
+              <Text className="ml-2 text-base font-bold text-ink">Pick-up</Text>
+              <Text className="ml-2 text-xs font-bold text-primary">30% off</Text>
             </View>
           </View>
         </View>
 
-        <View className="mb-4 flex-row items-center justify-between px-5">
-          <Text className="text-lg text-ink">
-            Delivery: <Text className="font-extrabold">15 - 30 min</Text>
+        <View className="mx-5 mb-4 flex-row items-center justify-between rounded-2xl bg-white px-4 py-4 shadow-sm">
+          <Text className="text-base text-ink">
+            Delivery: <Text className="font-bold">15 - 30 min</Text>
           </Text>
           <Pressable>
-            <Text className="text-base font-bold text-ink underline">Change</Text>
+            <Text className="text-sm font-bold text-primary">Change</Text>
           </Pressable>
         </View>
-
-        <View className="h-3 bg-[#F5F6F6]" />
 
         {items.map((item, index) => (
           <CartItemRow
@@ -347,16 +348,14 @@ export default function CartScreen({ navigation }) {
           />
         ))}
 
-        <Pressable onPress={goBackToMenu} className="flex-row items-center px-5 py-5">
-          <Ionicons name="add" size={26} color="#1F2933" />
-          <Text className="ml-2 text-lg font-extrabold text-ink">Add more items</Text>
+        <Pressable onPress={goBackToMenu} className="mx-5 mb-4 flex-row items-center rounded-2xl bg-white px-4 py-4 shadow-sm">
+          <Ionicons name="add" size={24} color="#FF6400" />
+          <Text className="ml-2 text-base font-bold text-ink">Add more items</Text>
         </Pressable>
 
-        <View className="h-3 bg-[#F5F6F6]" />
-
-        <View className="px-5 py-6">
-          <Text className="text-2xl font-extrabold text-ink">Popular with your order</Text>
-          <Text className="mt-1 text-lg text-muted">Other customers also bought these</Text>
+        <View className="mb-4 bg-white px-5 py-5">
+          <Text className="text-xl font-bold text-ink">Popular with your order</Text>
+          <Text className="mt-1 text-sm text-muted">Other customers also bought these</Text>
           {recommendations.length ? (
             <ScrollView horizontal showsHorizontalScrollIndicator={false} className="mt-5">
               {recommendations.map((item) => (
@@ -373,23 +372,21 @@ export default function CartScreen({ navigation }) {
           )}
         </View>
 
-        <View className="h-3 bg-[#F5F6F6]" />
-
-        <View className="px-5 py-6">
-          <View className="mb-6 flex-row items-center justify-between">
-            <Text className="text-xl font-extrabold text-ink">Subtotal</Text>
-            <Text className="text-lg font-extrabold text-ink">{currencyLabel(quote?.labels?.subtotal, subtotal)}</Text>
+        <View className="px-5 pb-6">
+          <View className="mb-3 flex-row items-center justify-between">
+            <Text className="text-lg font-bold text-ink">Subtotal</Text>
+            <Text className="text-lg font-bold text-ink">{currencyLabel(quote?.labels?.subtotal, subtotal)}</Text>
           </View>
-          <View className="rounded-2xl border border-border bg-white p-5">
+          <View className="rounded-2xl border border-border bg-white p-5 shadow-sm">
             <View className="flex-row items-start justify-between">
-              <View>
-                <Text className="text-xl font-extrabold text-ink">
+              <View className="flex-1 pr-4">
+                <Text className="text-lg font-bold text-ink">
                   Total <Text className="text-sm text-muted">(incl. fees and tax)</Text>
                 </Text>
-                <Text className="mt-1 text-base font-bold text-ink">See summary</Text>
+                <Text className="mt-1 text-sm font-semibold text-primary">See summary</Text>
               </View>
               <View className="items-end">
-                <Text className="text-xl font-extrabold text-primary">{currencyLabel(quote?.labels?.total, subtotal)}</Text>
+                <Text className="text-xl font-bold text-primary">{currencyLabel(quote?.labels?.total, subtotal)}</Text>
                 <Text className="mt-1 text-sm text-muted line-through">{money(subtotal * 1.2)}</Text>
               </View>
             </View>
@@ -397,7 +394,7 @@ export default function CartScreen({ navigation }) {
         </View>
       </ScrollView>
 
-      <View className="absolute bottom-0 left-0 right-0 border-t border-border bg-white px-5 pb-6 pt-4">
+      <View className="absolute bottom-0 left-0 right-0 border-t border-border bg-white px-5 pb-6 pt-4 shadow-lg">
         <Button
           title="Confirm payment and address"
           loading={isQuoting}

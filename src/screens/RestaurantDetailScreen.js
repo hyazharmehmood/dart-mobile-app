@@ -7,14 +7,17 @@ import {
   ScrollView,
   StatusBar,
   Text,
+  TextInput,
   View
 } from "react-native";
-import { SafeAreaView } from "react-native-safe-area-context";
+import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
 
 import Button from "../components/ui/Button";
 import { useToast } from "../components/ui/ToastProvider";
 import { getRestaurantMenu } from "../services/restaurantService";
 import useCartStore from "../store/useCartStore";
+
+const STICKY_MENU_SCROLL_OFFSET = 132;
 
 function money(value = 0) {
   const amount = Number(value) || 0;
@@ -82,11 +85,180 @@ function MenuSkeletonGrid() {
   );
 }
 
-function EmptyMenu() {
+function RestaurantHeaderSkeleton() {
+  return (
+    <View>
+      <SkeletonBlock className="h-56 w-full" />
+      <View className="px-5 pb-4 pt-5">
+        <SkeletonBlock className="-mt-12 mb-4 h-16 w-16 rounded-2xl bg-white" />
+        <View className="flex-row items-start justify-between">
+          <View className="flex-1 pr-5">
+            <SkeletonBlock className="h-6 w-4/5 rounded-full" />
+            <SkeletonBlock className="mt-3 h-4 w-2/3 rounded-full" />
+          </View>
+          <SkeletonBlock className="h-4 w-16 rounded-full" />
+        </View>
+        <View className="mt-5 flex-row">
+          {[0, 1, 2, 3].map((item) => (
+            <SkeletonBlock key={item} className="mr-3 h-9 w-24 rounded-lg" />
+          ))}
+        </View>
+        <MenuSkeletonGrid />
+      </View>
+    </View>
+  );
+}
+
+function EmptyMenu({ message = "No menu items available right now." }) {
   return (
     <View className="mt-8 rounded-2xl bg-[#F6F7F8] px-4 py-6">
-      <Text className="text-center text-base font-semibold text-muted">No menu items available right now.</Text>
+      <Text className="text-center text-base font-semibold text-muted">{message}</Text>
     </View>
+  );
+}
+
+function StickyMenuHeader({
+  activeCategoryId,
+  categories,
+  onBack,
+  onCategoryPress,
+  isPinned,
+  onLayout,
+  onSearchPress,
+  restaurantName,
+  safeTop = 0,
+  searchQuery
+}) {
+  const placeholder = isPinned && restaurantName ? `Search ${restaurantName}` : "Search menu";
+  const tabScrollRef = useRef(null);
+
+  useEffect(() => {
+    const activeIndex = categories.findIndex((category) => category.id === activeCategoryId);
+
+    if (activeIndex >= 0) {
+      tabScrollRef.current?.scrollTo({
+        x: Math.max(activeIndex * 112 - 24, 0),
+        animated: true
+      });
+    }
+  }, [activeCategoryId, categories]);
+
+  return (
+    <View
+      className={`${isPinned ? "" : "rounded-t-3xl"} border-b border-border bg-white px-5 pb-2`}
+      onLayout={onLayout}
+      style={{ paddingTop: isPinned ? safeTop + 12 : 22 }}
+    >
+      <View className="flex-row items-center">
+        {isPinned ? (
+          <Pressable onPress={onBack} className="mr-3 h-10 w-10 items-center justify-center rounded-full bg-white">
+            <Ionicons name="arrow-back" size={25} color="#1F2933" />
+          </Pressable>
+        ) : null}
+
+        <Pressable
+          onPress={onSearchPress}
+          className={`h-12 flex-row items-center rounded-full bg-[#F6F7F8] px-4 ${isPinned ? "flex-1" : "w-full"}`}
+        >
+          <Ionicons name="search-outline" size={22} color="#6B7280" />
+          <Text className={`ml-2 flex-1 text-base font-medium ${searchQuery ? "text-ink" : "text-muted"}`} numberOfLines={1}>
+            {searchQuery || placeholder}
+          </Text>
+          {searchQuery ? (
+            <View className="h-8 w-8 items-center justify-center">
+              <Ionicons name="close-circle" size={19} color="#9CA3AF" />
+            </View>
+          ) : null}
+        </Pressable>
+
+        {isPinned ? (
+          <Pressable className="ml-3 h-10 w-10 items-center justify-center rounded-full bg-white">
+            <Ionicons name="ellipsis-vertical" size={23} color="#1F2933" />
+          </Pressable>
+        ) : null}
+      </View>
+
+      {categories.length ? (
+        <ScrollView ref={tabScrollRef} horizontal showsHorizontalScrollIndicator={false} className="mt-5">
+          {categories.map((category, index) => {
+            const isActive = activeCategoryId === category.id;
+
+            return (
+              <Pressable
+                key={category.id}
+                onPress={() => onCategoryPress(category.id)}
+                className="mr-8 pb-2"
+              >
+                <View className="flex-row items-center">
+                  {index === 0 ? (
+                    <Ionicons
+                      name="flame"
+                      size={17}
+                      color={isActive ? "#FF6400" : "#6B7280"}
+                      style={{ marginRight: 6 }}
+                    />
+                  ) : null}
+                  <Text className={`text-base font-bold ${isActive ? "text-primary" : "text-muted"}`}>
+                    {category.name}
+                  </Text>
+                </View>
+                <View className={`mt-2 h-1 rounded-full ${isActive ? "bg-primary" : "bg-transparent"}`} />
+              </Pressable>
+            );
+          })}
+        </ScrollView>
+      ) : null}
+    </View>
+  );
+}
+
+function MenuSearchOverlay({ onClose, onSearchChange, searchQuery, visible }) {
+  const inputRef = useRef(null);
+
+  useEffect(() => {
+    if (!visible) {
+      return undefined;
+    }
+
+    const timer = setTimeout(() => {
+      inputRef.current?.focus();
+    }, 120);
+
+    return () => clearTimeout(timer);
+  }, [visible]);
+
+  return (
+    <Modal visible={visible} transparent animationType="fade" onRequestClose={onClose}>
+      <View className="flex-1 bg-black/55">
+        <SafeAreaView className="bg-white px-5 pb-6 pt-4" style={{ borderBottomLeftRadius: 18, borderBottomRightRadius: 18 }}>
+          <StatusBar barStyle="dark-content" backgroundColor="#FFFFFF" />
+          <View className="flex-row items-center">
+            <Pressable onPress={onClose} className="mr-3 h-11 w-11 items-center justify-center rounded-full bg-white">
+              <Ionicons name="arrow-back" size={26} color="#FF6400" />
+            </Pressable>
+            <View className="h-12 flex-1 flex-row items-center rounded-2xl bg-[#F6F7F8] px-4">
+              <TextInput
+                ref={inputRef}
+                value={searchQuery}
+                onChangeText={onSearchChange}
+                placeholder="Search menu"
+                placeholderTextColor="#8A8F98"
+                returnKeyType="search"
+                autoCorrect={false}
+                className="flex-1 text-lg font-medium text-ink"
+              />
+              {searchQuery ? (
+                <Pressable onPress={() => onSearchChange("")} className="h-8 w-8 items-center justify-center">
+                  <Ionicons name="close-circle" size={20} color="#9CA3AF" />
+                </Pressable>
+              ) : null}
+            </View>
+          </View>
+        </SafeAreaView>
+
+        <Pressable className="flex-1" onPress={onClose} />
+      </View>
+    </Modal>
   );
 }
 
@@ -102,10 +274,11 @@ function MenuItemCard({ item, cartSummary, isExpanded, isAdding, onAdd, onCountP
   const cartQuantity = cartSummary?.quantity || 0;
   const hasCartQuantity = cartQuantity > 0;
   const itemHasModifiers = hasModifiers(item);
+  const description = item.description || item.shortDescription || "";
 
   return (
-    <View className="mb-5 w-[48%]">
-      <View className="overflow-hidden rounded-2xl bg-[#F7F7F7]">
+    <Pressable onPress={() => (hasCartQuantity ? onCountPress(item) : onAdd(item))} className="mb-6 w-[48%] active:opacity-90">
+      <View className="overflow-hidden rounded-2xl bg-[#F7F7F7] shadow-sm">
         {getItemImage(item) ? (
           <Image source={{ uri: getItemImage(item) }} className="h-40 w-full" resizeMode="cover" />
         ) : (
@@ -113,17 +286,18 @@ function MenuItemCard({ item, cartSummary, isExpanded, isAdding, onAdd, onCountP
             <Ionicons name="fast-food-outline" size={30} color="#9CA3AF" />
           </View>
         )}
+        <View className="absolute inset-x-0 bottom-0 h-14 bg-black/5" />
         {hasCartQuantity && !isExpanded ? (
           <Pressable
             onPress={() => onCountPress(item)}
-            className="absolute bottom-3 right-3 h-10 w-10 items-center justify-center rounded-full bg-ink shadow-md"
+            className="absolute bottom-3 right-3 h-11 w-11 items-center justify-center rounded-full bg-ink shadow-md"
           >
-            <Text className="text-base font-extrabold text-white">{cartQuantity}</Text>
+            <Text className="text-base font-bold text-white">{cartQuantity}</Text>
           </Pressable>
         ) : null}
 
         {hasCartQuantity && isExpanded && !itemHasModifiers ? (
-          <View className="absolute bottom-3 right-3 h-10 flex-row items-center rounded-full border border-[#E5E7EB] bg-white shadow-md">
+          <View className="absolute bottom-3 right-3 h-10 flex-row items-center rounded-full border border-[#E5E7EB] bg-white shadow-lg">
             <Pressable
               onPress={() => onQuantityChange(cartSummary.index, cartQuantity - 1)}
               className="h-10 w-10 items-center justify-center"
@@ -146,21 +320,45 @@ function MenuItemCard({ item, cartSummary, isExpanded, isAdding, onAdd, onCountP
           <Pressable
             disabled={isAdding}
             onPress={() => onAdd(item)}
-            className={`absolute bottom-3 right-3 h-9 w-9 items-center justify-center rounded-full bg-white shadow-md ${
+            className={`absolute bottom-3 right-3 h-11 w-11 items-center justify-center rounded-full bg-white shadow-lg ${
               isAdding ? "opacity-50" : ""
             }`}
           >
-            <Ionicons name="add" size={24} color="#1F2933" />
+            <Ionicons name="add" size={26} color="#1F2933" />
           </Pressable>
         ) : null}
       </View>
-      <Text className="mt-2 text-base font-bold text-black" numberOfLines={1}>
+      <Text className="mt-2 text-base font-bold leading-5 text-ink" numberOfLines={2}>
         {item.name}
       </Text>
-      <Text className="text-sm text-muted" numberOfLines={1}>
-        from {money(item.price)}
-      </Text>
-    </View>
+      {description ? (
+        <Text className="mt-1 text-xs leading-4 text-muted" numberOfLines={2}>
+          {description}
+        </Text>
+      ) : null}
+      <View className="mt-1 flex-row items-center">
+        <Text className="text-sm font-semibold text-primary">from {money(item.price)}</Text>
+        {item.compareAtPrice || item.originalPrice ? (
+          <Text className="ml-1 text-xs text-muted line-through">
+            {money(item.compareAtPrice || item.originalPrice)}
+          </Text>
+        ) : null}
+      </View>
+      {item.isVegetarian || item.isSpicy ? (
+        <View className="mt-2 flex-row">
+          {item.isVegetarian ? (
+            <View className="mr-2 h-6 w-6 items-center justify-center rounded-full bg-[#DCF7EF]">
+              <Ionicons name="leaf" size={13} color="#2D8C6C" />
+            </View>
+          ) : null}
+          {item.isSpicy ? (
+            <View className="h-6 w-6 items-center justify-center rounded-full bg-[#FFF0E5]">
+              <Ionicons name="flame" size={13} color="#FF6400" />
+            </View>
+          ) : null}
+        </View>
+      ) : null}
+    </Pressable>
   );
 }
 
@@ -328,6 +526,7 @@ function ItemVariationModal({ item, visible, onClose, onConfirm, isSubmitting })
 }
 
 export default function RestaurantDetailScreen({ navigation, route }) {
+  const insets = useSafeAreaInsets();
   const initialRestaurant = route.params?.restaurant;
   const slug = route.params?.slug || initialRestaurant?.slug || initialRestaurant?.id;
   const [restaurant, setRestaurant] = useState(initialRestaurant || null);
@@ -336,8 +535,12 @@ export default function RestaurantDetailScreen({ navigation, route }) {
   const [activeQuantityItemId, setActiveQuantityItemId] = useState(null);
   const [addingItemId, setAddingItemId] = useState(null);
   const [activeCategoryId, setActiveCategoryId] = useState(null);
+  const [menuSearchQuery, setMenuSearchQuery] = useState("");
+  const [isSearchOpen, setIsSearchOpen] = useState(false);
+  const [isMenuPinned, setIsMenuPinned] = useState(false);
   const scrollRef = useRef(null);
   const sectionOffsetsRef = useRef({});
+  const stickyHeaderYRef = useRef(0);
   const addLockRef = useRef(false);
   const { showToast } = useToast();
   const setCartRestaurant = useCartStore((state) => state.setRestaurant);
@@ -346,6 +549,7 @@ export default function RestaurantDetailScreen({ navigation, route }) {
   const loadQuote = useCartStore((state) => state.loadQuote);
   const cartItems = useCartStore((state) => state.items);
   const quote = useCartStore((state) => state.quote);
+  const stickyMenuOffset = STICKY_MENU_SCROLL_OFFSET + insets.top;
 
   useEffect(() => {
     let active = true;
@@ -403,7 +607,27 @@ export default function RestaurantDetailScreen({ navigation, route }) {
     return () => clearTimeout(timer);
   }, [activeQuantityItemId, cartItems]);
 
-  const categories = useMemo(() => normalizeCategories(restaurant), [restaurant]);
+  const baseCategories = useMemo(() => normalizeCategories(restaurant), [restaurant]);
+  const categories = useMemo(() => {
+    const query = menuSearchQuery.trim().toLowerCase();
+
+    if (!query) {
+      return baseCategories;
+    }
+
+    return baseCategories
+      .map((category) => ({
+        ...category,
+        items: (category.items || []).filter((item) =>
+          [item.name, item.description, item.categoryName]
+            .filter(Boolean)
+            .join(" ")
+            .toLowerCase()
+            .includes(query)
+        )
+      }))
+      .filter((category) => category.items.length);
+  }, [baseCategories, menuSearchQuery]);
   const allItems = categories.flatMap((category) => category.items);
   const cartCount = cartItems.reduce((sum, item) => sum + item.quantity, 0);
   const cartSummaryByMenuItem = useMemo(() => {
@@ -420,15 +644,38 @@ export default function RestaurantDetailScreen({ navigation, route }) {
   }, [cartItems]);
 
   useEffect(() => {
-    const firstCategoryId = categories[0]?.id || null;
-    setActiveCategoryId((currentId) => {
-      if (!firstCategoryId) {
-        return null;
-      }
+    sectionOffsetsRef.current = {};
 
-      return categories.some((category) => category.id === currentId) ? currentId : firstCategoryId;
-    });
+    const firstCategoryId = categories[0]?.id || null;
+    setActiveCategoryId(firstCategoryId);
   }, [categories]);
+
+  const handleMenuScroll = (event) => {
+    const scrollY = event.nativeEvent.contentOffset.y;
+    const pinned = stickyHeaderYRef.current > 0 && scrollY >= stickyHeaderYRef.current - insets.top;
+
+    setIsMenuPinned((current) => (current === pinned ? current : pinned));
+
+    const activationY = scrollY + stickyMenuOffset + 56;
+    const orderedSections = categories
+      .map((category) => [category.id, sectionOffsetsRef.current[category.id]])
+      .filter(([, offset]) => typeof offset === "number")
+      .sort((a, b) => a[1] - b[1]);
+
+    let nextCategoryId = orderedSections[0]?.[0] || activeCategoryId;
+
+    for (const [categoryId, offset] of orderedSections) {
+      if (activationY >= offset) {
+        nextCategoryId = categoryId;
+      } else {
+        break;
+      }
+    }
+
+    if (nextCategoryId && nextCategoryId !== activeCategoryId) {
+      setActiveCategoryId(nextCategoryId);
+    }
+  };
 
   const handleCategoryPress = (categoryId) => {
     setActiveCategoryId(categoryId);
@@ -436,8 +683,20 @@ export default function RestaurantDetailScreen({ navigation, route }) {
     const y = sectionOffsetsRef.current[categoryId];
 
     if (typeof y === "number") {
+      requestAnimationFrame(() => {
+        scrollRef.current?.scrollTo({
+          y: Math.max(y - stickyMenuOffset, 0),
+          animated: true
+        });
+      });
+      return;
+    }
+
+    const index = categories.findIndex((category) => category.id === categoryId);
+
+    if (index >= 0) {
       scrollRef.current?.scrollTo({
-        y: Math.max(y - 12, 0),
+        y: Math.max(stickyHeaderYRef.current + index * 360, 0),
         animated: true
       });
     }
@@ -525,125 +784,192 @@ export default function RestaurantDetailScreen({ navigation, route }) {
   const restaurantImage = getRestaurantImage(displayRestaurant);
 
   return (
-    <SafeAreaView className="flex-1 bg-[#2F2F2F]">
-      <StatusBar barStyle="light-content" backgroundColor="#2F2F2F" />
-      <View className="mx-4 flex-1 overflow-hidden rounded-b-2xl bg-white">
+    <SafeAreaView className="flex-1 bg-white" edges={["bottom"]}>
+      <StatusBar
+        barStyle={isMenuPinned ? "dark-content" : "light-content"}
+        translucent
+        backgroundColor={isMenuPinned ? "#FFFFFF" : "transparent"}
+      />
+      <View className="flex-1 bg-white">
+        {isMenuPinned ? (
+          <View
+            pointerEvents="none"
+            className="absolute left-0 right-0 top-0 z-50 bg-white"
+            style={{ height: insets.top }}
+          />
+        ) : null}
         <ScrollView
           ref={scrollRef}
           className="flex-1"
           contentContainerStyle={{ paddingBottom: cartCount ? 124 : 28 }}
+          stickyHeaderIndices={isLoading && !restaurant ? [] : [2]}
+          scrollEventThrottle={16}
+          onScroll={handleMenuScroll}
         >
-          <View>
-            {restaurantImage ? (
-              <Image source={{ uri: restaurantImage }} className="h-48 w-full" resizeMode="cover" />
-            ) : (
-              <View className="h-48 w-full items-center justify-center bg-[#EEF0F2]">
-                <Ionicons name="restaurant-outline" size={38} color="#9CA3AF" />
-              </View>
-            )}
-            <View className="absolute left-5 right-5 top-5 flex-row items-center justify-between">
-              <Pressable
-                onPress={() => navigation.goBack()}
-                className="h-9 w-9 items-center justify-center rounded-full bg-white"
-              >
-                <Ionicons name="arrow-back" size={22} color="#111111" />
-              </Pressable>
-              <View className="flex-row">
-                <Pressable className="mr-2 h-9 w-9 items-center justify-center rounded-full bg-white">
-                  <Ionicons name="heart-outline" size={22} color="#111111" />
-                </Pressable>
-                <Pressable className="h-9 w-9 items-center justify-center rounded-full bg-white">
-                  <Ionicons name="share-social-outline" size={21} color="#111111" />
-                </Pressable>
-              </View>
-            </View>
-          </View>
+          {isLoading && !restaurant ? <RestaurantHeaderSkeleton /> : null}
 
-          <View className="px-5 pb-4 pt-5">
-            <View className="-mt-12 mb-3 h-16 w-16 items-center justify-center rounded-2xl bg-white shadow-md">
-              {displayRestaurant.logoUrl ? (
-                <Image source={{ uri: displayRestaurant.logoUrl }} className="h-12 w-12 rounded-xl" resizeMode="cover" />
-              ) : (
-                <Text className="text-2xl font-black text-primary">{displayRestaurant.name?.slice(0, 1) || "D"}</Text>
-              )}
-            </View>
-
-            <View className="flex-row items-start justify-between">
-              <View className="flex-1 pr-3">
-                <Text className="text-xl font-extrabold text-black" numberOfLines={2}>
-                  {displayRestaurant.name}
-                </Text>
-                {displayRestaurant.deliveryEta ? (
-                  <Text className="mt-1 text-sm text-muted">
-                    ⏱ Delivery {displayRestaurant.deliveryEta}
-                  </Text>
-                ) : null}
-              </View>
-              {displayRestaurant.rating ? (
-                <Text className="text-sm text-black">
-                  ⭐ {displayRestaurant.rating} {displayRestaurant.reviewCount ? `(${displayRestaurant.reviewCount})` : ""}
-                </Text>
-              ) : null}
-            </View>
-
-            {isLoading && !categories.length ? (
-              <View className="mt-5 flex-row">
-                {[0, 1, 2, 3].map((item) => (
-                  <SkeletonBlock key={item} className="mr-3 h-9 w-24 rounded-lg" />
-                ))}
-              </View>
-            ) : categories.length ? (
-              <ScrollView horizontal showsHorizontalScrollIndicator={false} className="mt-5">
-	              {categories.map((category, index) => (
-	                <Pressable
-	                  key={category.id}
-	                  onPress={() => handleCategoryPress(category.id)}
-	                  className={`mr-3 rounded-lg px-3 py-2 ${
-	                    activeCategoryId === category.id ? "bg-primary" : "bg-white"
-	                  }`}
-	                >
-	                  <Text
-	                    className={`text-sm font-semibold ${
-	                      activeCategoryId === category.id ? "text-white" : "text-muted"
-	                    }`}
-	                  >
-	                    {category.name}
-	                  </Text>
-	                </Pressable>
-	              ))}
-              </ScrollView>
-            ) : null}
-
-            {isLoading && !categories.length ? <MenuSkeletonGrid /> : null}
-
-            {!isLoading && !categories.length ? <EmptyMenu /> : null}
-
-            {categories.map((category) => (
-	              <View
-	                key={category.id}
-	                className="mt-6"
-	                onLayout={(event) => {
-	                  sectionOffsetsRef.current[category.id] = event.nativeEvent.layout.y + 260;
-	                }}
-	              >
-                <Text className="mb-4 text-xl font-extrabold text-black">{category.name}</Text>
-                <View className="flex-row flex-wrap justify-between">
-                  {(category.items || allItems).map((item) => (
-                    <MenuItemCard
-                      key={item.id}
-                      item={item}
-                      cartSummary={cartSummaryByMenuItem[item.id]}
-                      isExpanded={activeQuantityItemId === item.id}
-                      isAdding={addingItemId === item.id}
-                      onAdd={handleAddPress}
-                      onCountPress={handleCountPress}
-                      onQuantityChange={handleQuantityChange}
-                    />
-                  ))}
+          {isLoading && !restaurant ? null : (
+              <View>
+                {restaurantImage ? (
+                  <Image source={{ uri: restaurantImage }} className="h-72 w-full" resizeMode="cover" />
+                ) : (
+                  <View className="h-72 w-full items-center justify-center bg-[#EEF0F2]">
+                    <Ionicons name="restaurant-outline" size={38} color="#9CA3AF" />
+                  </View>
+                )}
+                <View className="absolute left-5 right-5 top-12 flex-row items-center justify-between">
+                  <Pressable
+                    onPress={() => navigation.goBack()}
+                    className="h-12 w-12 items-center justify-center rounded-full bg-white shadow-md"
+                  >
+                    <Ionicons name="arrow-back" size={27} color="#1F2933" />
+                  </Pressable>
+                  <View className="flex-row items-center">
+                    <Pressable className="mr-3 h-12 w-12 items-center justify-center rounded-full bg-white shadow-md">
+                      <Ionicons name="information-circle-outline" size={25} color="#1F2933" />
+                    </Pressable>
+                    <Pressable className="mr-3 h-12 w-12 items-center justify-center rounded-full bg-white shadow-md">
+                      <Ionicons name="share-social-outline" size={24} color="#1F2933" />
+                    </Pressable>
+                    {/* <Pressable className="h-12 w-12 items-center justify-center rounded-full bg-white shadow-md">
+                      <Ionicons name="person-add-outline" size={24} color="#1F2933" />
+                    </Pressable> */}
+                  </View>
                 </View>
               </View>
-            ))}
-          </View>
+          )}
+
+          {isLoading && !restaurant ? null : (
+              <View className="items-center bg-white px-5 pb-5">
+                <View className="-mt-12 mb-3 h-20 w-20 items-center justify-center rounded-2xl bg-white shadow-lg">
+                  {displayRestaurant.logoUrl ? (
+                    <Image source={{ uri: displayRestaurant.logoUrl }} className="h-14 w-14 rounded-xl" resizeMode="cover" />
+                  ) : (
+                    <Text className="text-2xl font-bold text-primary">{displayRestaurant.name?.slice(0, 1) || "D"}</Text>
+                  )}
+                </View>
+
+                <View className="w-full items-center">
+                  <Text className="text-center text-xl font-bold text-ink" numberOfLines={2}>
+                    {displayRestaurant.name}
+                  </Text>
+                  {displayRestaurant.rating ? (
+                    <View className="mt-2 flex-row items-center">
+                      <Text className="mr-1 text-base text-primary">★</Text>
+                      <Text className="text-sm font-medium text-ink">
+                        {displayRestaurant.rating} {displayRestaurant.reviewCount ? `(${displayRestaurant.reviewCount} ratings)` : ""}
+                      </Text>
+                    </View>
+                  ) : null}
+
+                  <View className="mt-6 w-full rounded-2xl border border-border bg-white px-4 py-3">
+                    <View className="flex-row items-center">
+                      <View className="mr-3 flex-row rounded-full bg-[#F6F7F8] p-1">
+                        <View className="h-9 w-9 items-center justify-center rounded-full bg-white">
+                          <Ionicons name="bicycle" size={21} color="#1F2933" />
+                        </View>
+                        <View className="h-9 w-9 items-center justify-center rounded-full">
+                          <Ionicons name="walk" size={21} color="#6B7280" />
+                        </View>
+                      </View>
+                      <View className="flex-1">
+                        <Text className="text-base font-bold text-ink">
+                          Delivery {displayRestaurant.deliveryEta || "35-55 min"}
+                        </Text>
+                        <Text className="mt-1 text-sm font-medium text-primary" numberOfLines={1}>
+                          Free delivery for first order <Text className="text-muted">• Min. order ₱299.00</Text>
+                        </Text>
+                      </View>
+                      <Text className="text-sm font-bold text-muted">Change</Text>
+                    </View>
+                  </View>
+
+                  <View className="mt-3 w-full flex-row">
+                    <View className="mr-2 flex-1 rounded-2xl border border-[#F7CDD9] bg-[#FFF0F3] px-4 py-4">
+                      <Text className="text-base font-bold text-primary">20% off</Text>
+                      <Text className="mt-1 text-xs leading-4 text-muted" numberOfLines={2}>
+                        No min. order Valid for selected items. Auto-applied.
+                      </Text>
+                    </View>
+                    <View className="ml-2 flex-1 rounded-2xl border border-border bg-white px-4 py-4">
+                      <Text className="text-base font-bold text-ink">50% off</Text>
+                      <Text className="font-bold text-ink">(PEHLAORDER)</Text>
+                      <Text className="mt-1 text-xs leading-4 text-muted" numberOfLines={1}>
+                        Min. order ₱499 Valid for all item...
+                      </Text>
+                    </View>
+                  </View>
+                </View>
+              </View>
+          )}
+
+          {isLoading && !restaurant ? null : (
+              <StickyMenuHeader
+                activeCategoryId={activeCategoryId}
+                categories={categories}
+                isPinned={isMenuPinned}
+                onBack={() => navigation.goBack()}
+                onCategoryPress={handleCategoryPress}
+                onLayout={(event) => {
+                  stickyHeaderYRef.current = event.nativeEvent.layout.y;
+                }}
+                onSearchPress={() => setIsSearchOpen(true)}
+                restaurantName={displayRestaurant.name}
+                safeTop={insets.top}
+                searchQuery={menuSearchQuery}
+              />
+          )}
+
+          {isLoading && !restaurant ? null : isLoading && !categories.length ? (
+            <View className="px-5">
+              <MenuSkeletonGrid />
+            </View>
+          ) : null}
+
+          {isLoading && !restaurant ? null : !isLoading && !categories.length ? (
+            <View className="px-5">
+              <EmptyMenu
+                message={
+                  menuSearchQuery.trim()
+                    ? "No menu items match your search."
+                    : "No menu items available right now."
+                }
+              />
+            </View>
+          ) : null}
+
+          {isLoading && !restaurant
+            ? null
+            : categories.map((category) => (
+                <View
+                  key={category.id}
+                  className="mt-6 px-5"
+                  onLayout={(event) => {
+                    sectionOffsetsRef.current[category.id] = event.nativeEvent.layout.y;
+                  }}
+                >
+                  <Text className="mb-1 text-xl font-bold text-ink">{category.name}</Text>
+                  {category.id === categories[0]?.id ? (
+                    <Text className="mb-5 text-base text-muted">Most ordered right now.</Text>
+                  ) : (
+                    <View className="mb-5" />
+                  )}
+                  <View className="flex-row flex-wrap justify-between">
+                    {(category.items || allItems).map((item) => (
+                      <MenuItemCard
+                        key={item.id}
+                        item={item}
+                        cartSummary={cartSummaryByMenuItem[item.id]}
+                        isExpanded={activeQuantityItemId === item.id}
+                        isAdding={addingItemId === item.id}
+                        onAdd={handleAddPress}
+                        onCountPress={handleCountPress}
+                        onQuantityChange={handleQuantityChange}
+                      />
+                    ))}
+                  </View>
+                </View>
+              ))}
         </ScrollView>
 
         {cartCount ? (
@@ -672,6 +998,12 @@ export default function RestaurantDetailScreen({ navigation, route }) {
         onClose={() => setSelectedItem(null)}
         onConfirm={addConfiguredItem}
         isSubmitting={Boolean(addingItemId)}
+      />
+      <MenuSearchOverlay
+        visible={isSearchOpen}
+        searchQuery={menuSearchQuery}
+        onSearchChange={setMenuSearchQuery}
+        onClose={() => setIsSearchOpen(false)}
       />
     </SafeAreaView>
   );
