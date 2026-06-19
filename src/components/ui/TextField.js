@@ -1,4 +1,4 @@
-import { Keyboard, Text, TextInput, View } from "react-native";
+import { Text, TextInput, View } from "react-native";
 
 export default function TextField({
   label,
@@ -23,18 +23,15 @@ export default function TextField({
       <TextInput
         value={value}
         onChangeText={onChangeText}
-        onBlur={(event) => {
-          onBlur?.(event);
-          Keyboard.dismiss();
-        }}
+        onBlur={onBlur}
         placeholder={placeholder}
         secureTextEntry={secureTextEntry}
         keyboardType={keyboardType}
         autoCapitalize={autoCapitalize}
         returnKeyType={returnKeyType}
-        blurOnSubmit
+        blurOnSubmit={false}
         placeholderTextColor="#A3A3A3"
-        className={`h-12 rounded-2xl border bg-white px-4 text-base text-ink ${
+        className={`h-14 rounded-2xl border bg-white px-4 text-base text-ink ${
           showError ? "border-red-500" : "border-[#D9D9D9]"
         } ${inputClassName}`}
       />
