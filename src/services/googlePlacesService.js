@@ -59,19 +59,26 @@ export function mapPlaceToDeliveryAddress(place) {
   const components = place?.address_components || [];
   const findComponent = (type) =>
     components.find((component) => component.types.includes(type))?.long_name || "";
+  const findShortComponent = (type) =>
+    components.find((component) => component.types.includes(type))?.short_name || "";
+  const formattedAddress = place?.formatted_address || "";
+  const city =
+    findComponent("locality") ||
+    findComponent("administrative_area_level_2") ||
+    findComponent("sublocality") ||
+    "";
+  const state = findComponent("administrative_area_level_1") || "";
+  const country = findShortComponent("country") || findComponent("country") || "PK";
 
   return {
-    addressLine1: place?.formatted_address || "",
+    address: formattedAddress,
+    addressLine1: formattedAddress,
     addressLine2: "",
-    city:
-      findComponent("locality") ||
-      findComponent("administrative_area_level_2") ||
-      "Karachi",
-    state: findComponent("administrative_area_level_1") || "Sindh",
-    postalCode: findComponent("postal_code") || "74000",
-    country: findComponent("country") || "PK",
+    city,
+    state,
+    postalCode: findComponent("postal_code") || "",
+    country,
     latitude: place?.geometry?.location?.lat || 24.8607,
-    longitude: place?.geometry?.location?.lng || 67.0011,
-    deliveryRadiusKm: 5
+    longitude: place?.geometry?.location?.lng || 67.0011
   };
 }

@@ -1,0 +1,15 @@
+meta {
+  name: list-delivery-zones
+  type: http
+  seq: 1
+}
+
+get {
+  url: {{baseUrl}}/api/delivery-zones
+  body: none
+  auth: none
+}
+
+docs {
+  Public endpoint. Use an active zone id as preferredZoneId during driver signup/profile update.
+}

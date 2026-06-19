@@ -1,0 +1,32 @@
+meta {
+  name: create-dragonpay-payment
+  type: http
+  seq: 1
+}
+
+post {
+  url: {{baseUrl}}/api/customer/payments/dragonpay/create
+  body: json
+  auth: none
+}
+
+headers {
+  Authorization: Bearer {{customerAccessToken}}
+}
+
+body:json {
+  {
+    "restaurantSlug": "{{restaurantSlug}}",
+    "deliveryAddress": "387-J, 2nd Floor, DHA Phase 12 Block J DHA EME Sector, Lahore, Pakistan",
+    "procId": "BOG",
+    "items": [
+      {
+        "menuItemId": "{{menuItemId}}",
+        "quantity": 1,
+        "modifierSelections": [],
+        "specialInstructions": "",
+        "unavailablePreference": "REMOVE_ITEM"
+      }
+    ]
+  }
+}

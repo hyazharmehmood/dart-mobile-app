@@ -1,0 +1,19 @@
+meta {
+  name: Get Customer Order
+  type: http
+  seq: 3
+}
+
+get {
+  url: {{baseUrl}}/api/customer/orders/{{orderId}}
+  body: none
+  auth: none
+}
+
+headers {
+  Authorization: Bearer {{customerAccessToken}}
+}
+
+docs {
+  Loads one authenticated customer order by id.
+}

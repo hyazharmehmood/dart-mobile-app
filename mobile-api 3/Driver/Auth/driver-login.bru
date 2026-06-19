@@ -1,0 +1,22 @@
+meta {
+  name: driver-login
+  type: http
+  seq: 2
+}
+
+post {
+  url: {{baseUrl}}/api/driver/login
+  body: json
+  auth: none
+}
+
+body:json {
+  {
+    "email": "driver.demo@example.com",
+    "password": "password123"
+  }
+}
+
+docs {
+  Save `auth.accessToken` as `driverAccessToken` for protected driver APIs.
+}

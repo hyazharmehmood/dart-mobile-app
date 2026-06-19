@@ -1,0 +1,19 @@
+meta {
+  name: Get Customer Profile
+  type: http
+  seq: 1
+}
+
+get {
+  url: {{baseUrl}}/api/customer/profile
+  body: none
+  auth: none
+}
+
+headers {
+  Authorization: Bearer {{customerAccessToken}}
+}
+
+docs {
+  Loads the logged-in customer's profile, active address, saved addresses, stats, and recent orders.
+}

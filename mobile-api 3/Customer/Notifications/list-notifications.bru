@@ -1,0 +1,19 @@
+meta {
+  name: list-notifications
+  type: http
+  seq: 1
+}
+
+get {
+  url: {{baseUrl}}/api/notifications
+  body: none
+  auth: none
+}
+
+headers {
+  Authorization: Bearer {{customerAccessToken}}
+}
+
+docs {
+  Lists customer-visible in-app notifications and unreadCount. Use unreadOnly=true for badge-only inbox screens.
+}

@@ -1,0 +1,19 @@
+meta {
+  name: list-payouts
+  type: http
+  seq: 1
+}
+
+get {
+  url: {{baseUrl}}/api/admin/payouts
+  body: none
+  auth: none
+}
+
+params:query {
+  status: 
+}
+
+headers {
+  Cookie: {{adminSessionCookie}}
+}

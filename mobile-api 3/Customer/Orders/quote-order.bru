@@ -1,0 +1,41 @@
+meta {
+  name: Quote Customer Order
+  type: http
+  seq: 1
+}
+
+post {
+  url: {{baseUrl}}/api/customer/orders/quote
+  body: json
+  auth: none
+}
+
+headers {
+  Content-Type: application/json
+}
+
+body:json {
+  {
+    "restaurantSlug": "{{restaurantSlug}}",
+    "items": [
+      {
+        "menuItemId": "{{menuItemId}}",
+        "quantity": 1,
+        "modifierSelections": [
+          {
+            "groupId": "{{modifierGroupId}}",
+            "optionIds": ["{{modifierOptionId}}"]
+          }
+        ],
+        "specialInstructions": "No mayo",
+        "unavailablePreference": "REMOVE_ITEM"
+      }
+    ]
+  }
+}
+
+docs {
+  Calculates server-side cart totals and validates required modifiers/add-ons before checkout.
+  
+  For simple items without modifiers, send only menuItemId and quantity.
+}

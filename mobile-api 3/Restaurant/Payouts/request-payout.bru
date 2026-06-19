@@ -1,0 +1,23 @@
+meta {
+  name: request-payout
+  type: http
+  seq: 2
+}
+
+post {
+  url: {{baseUrl}}/api/restaurant/payouts
+  body: json
+  auth: none
+}
+
+headers {
+  Cookie: {{restaurantSessionCookie}}
+}
+
+body:json {
+  {
+    "amount": 50,
+    "payoutMethodId": "{{payoutMethodId}}",
+    "runDate": "2026-06-15"
+  }
+}

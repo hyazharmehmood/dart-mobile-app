@@ -1,0 +1,23 @@
+meta {
+  name: List Customer Orders
+  type: http
+  seq: 2
+}
+
+get {
+  url: {{baseUrl}}/api/customer/orders?status=&page=1&limit=10
+  body: none
+  auth: none
+}
+
+headers {
+  Authorization: Bearer {{customerAccessToken}}
+}
+
+docs {
+  Lists authenticated customer order history.
+
+  Optional query params:
+  - status: PENDING, ACCEPTED, PREPARING, READY, ON_THE_WAY, DELIVERED, CANCELLED, REFUNDED
+  - page/limit
+}

@@ -1,0 +1,36 @@
+meta {
+  name: Update Customer Address
+  type: http
+  seq: 4
+}
+
+patch {
+  url: {{baseUrl}}/api/customer/addresses/{{customerAddressId}}
+  body: json
+  auth: none
+}
+
+headers {
+  Content-Type: application/json
+  Authorization: Bearer {{customerAccessToken}}
+}
+
+body:json {
+  {
+    "label": "Office",
+    "address": "Updated formatted address, Lahore, Pakistan",
+    "addressLine1": "Updated line 1",
+    "addressLine2": "",
+    "city": "Lahore",
+    "state": "Punjab",
+    "postalCode": "",
+    "country": "PK",
+    "latitude": 31.5204,
+    "longitude": 74.3587,
+    "isActive": true
+  }
+}
+
+docs {
+  Edits a saved address. Send { "isActive": true } by itself to make an address active.
+}

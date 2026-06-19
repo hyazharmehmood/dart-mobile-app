@@ -1,0 +1,15 @@
+meta {
+  name: list-commissions
+  type: http
+  seq: 1
+}
+
+get {
+  url: {{baseUrl}}/api/admin/commissions
+  body: none
+  auth: none
+}
+
+headers {
+  Cookie: {{adminSessionCookie}}
+}

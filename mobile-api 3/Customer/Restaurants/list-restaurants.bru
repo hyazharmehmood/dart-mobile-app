@@ -1,0 +1,38 @@
+meta {
+  name: List Restaurants
+  type: http
+  seq: 1
+}
+
+get {
+  url: {{baseUrl}}/api/customer/restaurants?q=&city=Lahore&cuisine=&openNow=true&acceptsOrders=true&lat=31.44269&lng=74.20766&sort=recommended&page=1&limit=12
+  body: none
+  auth: none
+}
+
+headers {
+  Authorization: Bearer {{customerAccessToken}}
+}
+
+docs {
+  Lists approved restaurants for the customer app discovery/feed screen.
+
+  Requires:
+  - Authorization: Bearer <customer access token from customer signup/login>
+
+  Query params:
+  - q: search by restaurant, cuisine, description, or menu item
+  - city: optional city filter
+  - cuisine: optional cuisine filter
+  - openNow: true/false
+  - acceptsOrders: true/false
+  - lat/lng: optional customer location for distance and delivery-radius filtering
+  - sort: recommended, rating, prep_time, distance, newest
+  - page/limit: pagination
+
+  Expected success response:
+  - restaurants[] with id, slug, name, cuisine, rating, open/order status, deliveryEta, distanceKm, deliveryRadiusKm, isDeliverable, logoUrl, coverImageUrl, and featuredItems
+  - pagination metadata
+  
+  If lat/lng are provided, only restaurants whose deliveryRadiusKm covers the coordinates are returned.
+}

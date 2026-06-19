@@ -1,0 +1,21 @@
+meta {
+  name: review-payout-method
+  type: http
+  seq: 6
+}
+
+patch {
+  url: {{baseUrl}}/api/admin/payout-methods/{{payoutMethodId}}
+  body: json
+  auth: none
+}
+
+headers {
+  Cookie: {{adminSessionCookie}}
+}
+
+body:json {
+  {
+    "action": "APPROVE"
+  }
+}

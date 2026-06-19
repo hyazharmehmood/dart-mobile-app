@@ -1,0 +1,19 @@
+meta {
+  name: Get Customer Address
+  type: http
+  seq: 2
+}
+
+get {
+  url: {{baseUrl}}/api/customer/addresses/{{customerAddressId}}
+  body: none
+  auth: none
+}
+
+headers {
+  Authorization: Bearer {{customerAccessToken}}
+}
+
+docs {
+  Loads one saved address by id. The address must belong to the logged-in customer.
+}

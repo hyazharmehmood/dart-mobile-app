@@ -1,0 +1,36 @@
+meta {
+  name: Update Customer Profile
+  type: http
+  seq: 2
+}
+
+patch {
+  url: {{baseUrl}}/api/customer/profile
+  body: json
+  auth: none
+}
+
+headers {
+  Content-Type: application/json
+  Authorization: Bearer {{customerAccessToken}}
+}
+
+body:json {
+  {
+    "firstName": "Taha",
+    "lastName": "Customer",
+    "phone": "+923105606554",
+    "imageUrl": "{{customerImageUrl}}"
+  }
+}
+
+docs {
+  Updates customer profile fields. Send only the fields that changed.
+  
+  Supported fields:
+  - name
+  - firstName
+  - lastName
+  - phone
+  - image or imageUrl
+}

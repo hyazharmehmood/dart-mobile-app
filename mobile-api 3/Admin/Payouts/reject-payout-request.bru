@@ -1,0 +1,22 @@
+meta {
+  name: reject-payout-request
+  type: http
+  seq: 7
+}
+
+patch {
+  url: {{baseUrl}}/api/admin/payouts/{{payoutId}}
+  body: json
+  auth: none
+}
+
+headers {
+  Cookie: {{adminSessionCookie}}
+}
+
+body:json {
+  {
+    "status": "REJECTED",
+    "rejectionReason": "Recipient details need correction."
+  }
+}

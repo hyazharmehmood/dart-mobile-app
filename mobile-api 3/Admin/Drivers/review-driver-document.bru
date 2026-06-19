@@ -1,0 +1,22 @@
+meta {
+  name: review-driver-document
+  type: http
+  seq: 4
+}
+
+patch {
+  url: {{baseUrl}}/api/admin/drivers/{{driverId}}/documents/{{documentId}}
+  body: json
+  auth: none
+}
+
+headers {
+  Cookie: {{adminSessionCookie}}
+}
+
+body:json {
+  {
+    "status": "APPROVED",
+    "notes": ""
+  }
+}

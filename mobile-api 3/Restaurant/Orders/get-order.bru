@@ -1,0 +1,19 @@
+meta {
+  name: Get Restaurant Order
+  type: http
+  seq: 2
+}
+
+get {
+  url: {{baseUrl}}/api/restaurant/orders/{{orderId}}
+  body: none
+  auth: none
+}
+
+headers {
+  Cookie: {{restaurantSessionCookie}}
+}
+
+docs {
+  Loads a single order scoped to the authenticated restaurant.
+}

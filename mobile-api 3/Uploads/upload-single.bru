@@ -1,0 +1,33 @@
+meta {
+  name: Upload Single File
+  type: http
+  seq: 1
+}
+
+post {
+  url: {{baseUrl}}/api/uploads/single
+  body: multipartForm
+  auth: none
+}
+
+headers {
+  Cookie: {{sessionCookie}}
+}
+
+body:multipart-form {
+  file: @file(/path/to/logo.png)
+  context: restaurant-logo
+  folder: branding
+}
+
+docs {
+  Uploads a single image or PDF (max 10MB) to Cloudinary.
+
+  Folder behavior:
+  - Authenticated user: dart/uploads/users/{userId}
+  - Pre-login onboarding: dart/uploads/onboarding/{dart_upload_session cookie}
+
+  Expected success response:
+  - 201 Created
+  - asset.publicId, asset.secureUrl, asset.resourceType
+}

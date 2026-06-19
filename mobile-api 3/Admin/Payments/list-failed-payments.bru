@@ -1,0 +1,21 @@
+meta {
+  name: list-failed-payments
+  type: http
+  seq: 2
+}
+
+get {
+  url: {{baseUrl}}/api/admin/payments/failed
+  body: none
+  auth: none
+}
+
+params:query {
+  q: 
+  risk: 
+  status: 
+}
+
+headers {
+  Cookie: {{adminSessionCookie}}
+}

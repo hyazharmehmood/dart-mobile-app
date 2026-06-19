@@ -1,0 +1,36 @@
+meta {
+  name: Create Customer Address
+  type: http
+  seq: 3
+}
+
+post {
+  url: {{baseUrl}}/api/customer/addresses
+  body: json
+  auth: none
+}
+
+headers {
+  Content-Type: application/json
+  Authorization: Bearer {{customerAccessToken}}
+}
+
+body:json {
+  {
+    "label": "Home",
+    "address": "387-J, 2nd Floor, DHA Phase 12, Lahore, Pakistan",
+    "addressLine1": "387-J, 2nd Floor",
+    "addressLine2": "DHA Phase 12",
+    "city": "Lahore",
+    "state": "Punjab",
+    "postalCode": "",
+    "country": "PK",
+    "latitude": 31.44269,
+    "longitude": 74.20766,
+    "isActive": true
+  }
+}
+
+docs {
+  Creates a saved delivery address. postalCode, city, state, latitude, and longitude are optional because Google/map results may not always provide them.
+}

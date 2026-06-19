@@ -1,0 +1,26 @@
+meta {
+  name: List Restaurant Orders
+  type: http
+  seq: 1
+}
+
+get {
+  url: {{baseUrl}}/api/restaurant/orders?q=&status=&page=1&limit=10
+  body: none
+  auth: none
+}
+
+headers {
+  Cookie: {{restaurantSessionCookie}}
+}
+
+docs {
+  Lists orders for the authenticated restaurant partner.
+
+  Requires an authenticated RESTAURANT NextAuth session cookie.
+
+  Query params:
+  - q: order number, customer name, or delivery address
+  - status: PENDING, ACCEPTED, PREPARING, READY, ON_THE_WAY, DELIVERED, CANCELLED, REFUNDED
+  - page/limit: pagination
+}

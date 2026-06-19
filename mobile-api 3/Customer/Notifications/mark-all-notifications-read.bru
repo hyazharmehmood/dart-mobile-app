@@ -1,0 +1,19 @@
+meta {
+  name: mark-all-notifications-read
+  type: http
+  seq: 3
+}
+
+post {
+  url: {{baseUrl}}/api/notifications/read-all
+  body: none
+  auth: none
+}
+
+headers {
+  Authorization: Bearer {{customerAccessToken}}
+}
+
+docs {
+  Marks all customer-visible notifications as read.
+}

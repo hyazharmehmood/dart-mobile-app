@@ -1,0 +1,19 @@
+meta {
+  name: List Customer Addresses
+  type: http
+  seq: 1
+}
+
+get {
+  url: {{baseUrl}}/api/customer/addresses
+  body: none
+  auth: none
+}
+
+headers {
+  Authorization: Bearer {{customerAccessToken}}
+}
+
+docs {
+  Lists saved customer addresses, active address first.
+}

@@ -1,0 +1,34 @@
+meta {
+  name: Get Restaurant Menu
+  type: http
+  seq: 2
+}
+
+get {
+  url: {{baseUrl}}/api/customer/restaurants/{{restaurantSlug}}
+  body: none
+  auth: none
+}
+
+headers {
+  Authorization: Bearer {{customerAccessToken}}
+}
+
+docs {
+  Loads a customer-facing restaurant storefront and categorized menu.
+
+  Requires:
+  - Authorization: Bearer <customer access token from customer signup/login>
+
+  Path params:
+  - restaurantSlug: restaurant slug or restaurant id
+
+  Expected success response:
+  - restaurant profile, address, photos, open/order status, rating, deliveryEta
+  - availability[] weekly hours
+  - menu.categories[] with category details and items[]
+  - menu.featuredItems[]
+  - menu.stats with category/item counts
+
+  Inactive menu items are hidden. Out-of-stock items are returned with isAvailable=false and isOutOfStock=true.
+}

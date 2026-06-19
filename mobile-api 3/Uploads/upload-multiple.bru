@@ -1,0 +1,32 @@
+meta {
+  name: Upload Multiple Files
+  type: http
+  seq: 2
+}
+
+post {
+  url: {{baseUrl}}/api/uploads/multiple
+  body: multipartForm
+  auth: none
+}
+
+headers {
+  Cookie: {{sessionCookie}}
+}
+
+body:multipart-form {
+  files: @file(/path/to/photo-1.jpg)
+  files: @file(/path/to/photo-2.jpg)
+  context: restaurant-photos
+  folder: gallery
+}
+
+docs {
+  Uploads multiple images or PDFs (max 10MB each) to Cloudinary.
+
+  Use repeated `files` fields for each file.
+
+  Expected success response:
+  - 201 Created
+  - assets[] with publicId, secureUrl, resourceType per file
+}

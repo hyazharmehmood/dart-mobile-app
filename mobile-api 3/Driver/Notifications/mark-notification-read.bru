@@ -1,0 +1,19 @@
+meta {
+  name: mark-notification-read
+  type: http
+  seq: 2
+}
+
+patch {
+  url: {{baseUrl}}/api/notifications/{{notificationId}}/read
+  body: none
+  auth: none
+}
+
+headers {
+  Authorization: Bearer {{driverAccessToken}}
+}
+
+docs {
+  Marks one driver-visible notification as read.
+}

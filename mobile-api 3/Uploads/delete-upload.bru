@@ -1,0 +1,35 @@
+meta {
+  name: Delete Uploaded File
+  type: http
+  seq: 3
+}
+
+delete {
+  url: {{baseUrl}}/api/uploads
+  body: json
+  auth: none
+}
+
+headers {
+  Content-Type: application/json
+  Cookie: {{sessionCookie}}
+}
+
+body:json {
+  {
+    "publicId": "dart/uploads/users/USER_ID/filename",
+    "resourceType": "image"
+  }
+}
+
+docs {
+  Deletes a Cloudinary asset by publicId.
+
+  Only assets under the current user's upload folder or onboarding session folder can be deleted.
+
+  resourceType is optional (image, raw, video). Omit to auto-try image then raw.
+
+  Expected success response:
+  - 200 OK
+  - deleted: true
+}

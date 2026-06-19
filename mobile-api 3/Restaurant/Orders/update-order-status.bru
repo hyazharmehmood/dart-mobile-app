@@ -1,0 +1,31 @@
+meta {
+  name: Update Restaurant Order Status
+  type: http
+  seq: 3
+}
+
+patch {
+  url: {{baseUrl}}/api/restaurant/orders/{{orderId}}
+  body: json
+  auth: none
+}
+
+headers {
+  Content-Type: application/json
+  Cookie: {{restaurantSessionCookie}}
+}
+
+body:json {
+  {
+    "status": "ACCEPTED"
+  }
+}
+
+docs {
+  Updates a restaurant-owned order status.
+
+  Allowed restaurant transitions:
+  - PENDING -> ACCEPTED or CANCELLED
+  - ACCEPTED -> PREPARING or CANCELLED
+  - PREPARING -> READY or CANCELLED
+}

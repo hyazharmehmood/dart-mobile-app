@@ -1,0 +1,51 @@
+meta {
+  name: Customer Signup
+  type: http
+  seq: 1
+}
+
+post {
+  url: {{baseUrl}}/api/customer/signup
+  body: json
+  auth: none
+}
+
+headers {
+  Content-Type: application/json
+}
+
+body:json {
+  {
+    "firstName": "Azhar",
+    "lastName": "Mehmood",
+    "email": "hyazharmehmood@gmail.com",
+    "password": "Azhar123@"
+  }
+}
+
+docs {
+  Creates a customer account for the mobile app onboarding flow. Address is optional.
+  
+  Optional address payload can be sent when already available:
+  {
+    "address": {
+      "addressLine1": "221B Baker Street",
+      "addressLine2": "Apartment 4",
+      "city": "Karachi",
+      "state": "Sindh",
+      "postalCode": "",
+      "country": "PK",
+      "latitude": 24.8607,
+      "longitude": 67.0011
+    }
+  }
+  
+  Expected success response:
+  - 201 Created
+  - user.id, user.name, user.email, user.role
+  - user.customerProfile with firstName, lastName, and addresses if provided
+  - auth.accessToken, auth.tokenType, auth.expiresIn, auth.expiresAt
+
+  Mobile clients should store auth.accessToken securely and send it on protected customer requests as:
+  Authorization: Bearer <accessToken>
+}

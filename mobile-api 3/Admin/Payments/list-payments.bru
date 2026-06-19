@@ -1,0 +1,21 @@
+meta {
+  name: list-payments
+  type: http
+  seq: 1
+}
+
+get {
+  url: {{baseUrl}}/api/admin/payments
+  body: none
+  auth: none
+}
+
+params:query {
+  q: 
+  type: 
+  status: 
+}
+
+headers {
+  Cookie: {{adminSessionCookie}}
+}

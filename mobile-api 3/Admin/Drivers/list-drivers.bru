@@ -1,0 +1,20 @@
+meta {
+  name: list-drivers
+  type: http
+  seq: 1
+}
+
+get {
+  url: {{baseUrl}}/api/admin/drivers
+  body: none
+  auth: none
+}
+
+params:query {
+  q: 
+  status: 
+}
+
+headers {
+  Cookie: {{adminSessionCookie}}
+}

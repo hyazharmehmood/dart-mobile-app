@@ -1,0 +1,21 @@
+meta {
+  name: update-payout-method
+  type: http
+  seq: 5
+}
+
+patch {
+  url: {{baseUrl}}/api/restaurant/payout-methods/{{payoutMethodId}}
+  body: json
+  auth: none
+}
+
+headers {
+  Cookie: {{restaurantSessionCookie}}
+}
+
+body:json {
+  {
+    "isDefault": true
+  }
+}

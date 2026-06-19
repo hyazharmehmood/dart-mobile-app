@@ -1,0 +1,20 @@
+meta {
+  name: list-payout-methods
+  type: http
+  seq: 5
+}
+
+get {
+  url: {{baseUrl}}/api/admin/payout-methods
+  body: none
+  auth: none
+}
+
+params:query {
+  status: 
+  partyType: 
+}
+
+headers {
+  Cookie: {{adminSessionCookie}}
+}

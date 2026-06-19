@@ -1,0 +1,15 @@
+meta {
+  name: Feed Cuisines
+  type: http
+  seq: 3
+}
+
+get {
+  url: {{baseUrl}}/api/customer/feed/cuisines?lat=31.44269&lng=74.20766&limit=30
+  body: none
+  auth: none
+}
+
+docs {
+  Returns active cuisines with restaurant counts based on restaurants that can deliver to the provided coordinates.
+}

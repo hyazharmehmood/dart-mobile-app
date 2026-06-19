@@ -1,0 +1,15 @@
+meta {
+  name: get-earnings
+  type: http
+  seq: 1
+}
+
+get {
+  url: {{baseUrl}}/api/driver/earnings
+  body: none
+  auth: none
+}
+
+headers {
+  Authorization: Bearer {{driverAccessToken}}
+}

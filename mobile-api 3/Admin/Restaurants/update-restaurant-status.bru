@@ -1,0 +1,35 @@
+meta {
+  name: Update Restaurant Status
+  type: http
+  seq: 2
+}
+
+patch {
+  url: {{baseUrl}}/api/admin/restaurants/{{restaurantId}}/status
+  body: json
+  auth: none
+}
+
+headers {
+  Content-Type: application/json
+  Cookie: {{adminSessionCookie}}
+}
+
+body:json {
+  {
+    "status": "APPROVED",
+    "reviewNotes": "All KYB documents verified."
+  }
+}
+
+docs {
+  Updates a restaurant partner approval status.
+
+  Allowed status values: APPROVED, REJECTED, SUSPENDED
+
+  Requires an authenticated ADMIN session (NextAuth cookie).
+
+  Expected success response:
+  - 200 OK
+  - restaurant.id, restaurant.name, restaurant.status, restaurant.reviewedAt
+}

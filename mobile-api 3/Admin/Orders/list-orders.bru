@@ -1,0 +1,27 @@
+meta {
+  name: List Admin Orders
+  type: http
+  seq: 1
+}
+
+get {
+  url: {{baseUrl}}/api/admin/orders?q=&status=&restaurantId=&page=1&limit=10
+  body: none
+  auth: none
+}
+
+headers {
+  Cookie: {{adminSessionCookie}}
+}
+
+docs {
+  Lists all platform orders for admins with filters.
+
+  Requires an authenticated ADMIN NextAuth session cookie.
+
+  Query params:
+  - q: order number, customer, restaurant, or delivery address
+  - status: PENDING, ACCEPTED, PREPARING, READY, ON_THE_WAY, DELIVERED, CANCELLED, REFUNDED
+  - restaurantId: optional restaurant filter
+  - page/limit: pagination
+}

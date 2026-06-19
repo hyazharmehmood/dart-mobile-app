@@ -1,0 +1,21 @@
+meta {
+  name: update-payout-method
+  type: http
+  seq: 5
+}
+
+patch {
+  url: {{baseUrl}}/api/driver/payout-methods/{{payoutMethodId}}
+  body: json
+  auth: none
+}
+
+headers {
+  Authorization: Bearer {{driverAccessToken}}
+}
+
+body:json {
+  {
+    "isDefault": true
+  }
+}

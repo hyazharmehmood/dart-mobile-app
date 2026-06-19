@@ -38,6 +38,21 @@ module.exports = {
       },
       permissions: ["ACCESS_FINE_LOCATION", "ACCESS_COARSE_LOCATION"],
       edgeToEdgeEnabled: true
-    }
+    },
+    plugins: [
+      "expo-secure-store",
+      [
+        "expo-font",
+        {
+          fonts: [
+            "./assets/fonts/Satoshi-Light.ttf",
+            "./assets/fonts/Satoshi-Regular.ttf",
+            "./assets/fonts/Satoshi-Medium.ttf",
+            "./assets/fonts/Satoshi-Bold.ttf",
+            "./assets/fonts/Satoshi-Black.ttf"
+          ]
+        }
+      ]
+    ]
   }
 };

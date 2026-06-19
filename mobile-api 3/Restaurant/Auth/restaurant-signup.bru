@@ -1,0 +1,78 @@
+meta {
+  name: Restaurant Signup
+  type: http
+  seq: 1
+}
+
+post {
+  url: {{baseUrl}}/api/restaurant/signup
+  body: json
+  auth: none
+}
+
+headers {
+  Content-Type: application/json
+}
+
+body:json {
+  {
+    "owner": {
+      "firstName": "Maria",
+      "lastName": "Garcia",
+      "email": "maria@tacofiesta.example",
+      "phone": "+1 555-0203",
+      "password": "Partner123@"
+    },
+    "business": {
+      "name": "Taco Fiesta",
+      "businessType": "LLC",
+      "cuisine": "Mexican",
+      "description": "Authentic street tacos and burritos."
+    },
+    "address": {
+      "addressLine1": "123 Main Street",
+      "addressLine2": "Suite 4",
+      "city": "New York",
+      "state": "NY",
+      "postalCode": "10001",
+      "country": "US",
+      "latitude": 40.7128,
+      "longitude": -74.006
+    },
+    "contact": {
+      "phone": "+1 555-0203",
+      "email": "orders@tacofiesta.example"
+    },
+    "hours": [
+      { "dayOfWeek": 0, "opensAt": "09:00", "closesAt": "22:00", "isClosed": true },
+      { "dayOfWeek": 1, "opensAt": "09:00", "closesAt": "22:00", "isClosed": false },
+      { "dayOfWeek": 2, "opensAt": "09:00", "closesAt": "22:00", "isClosed": false },
+      { "dayOfWeek": 3, "opensAt": "09:00", "closesAt": "22:00", "isClosed": false },
+      { "dayOfWeek": 4, "opensAt": "09:00", "closesAt": "22:00", "isClosed": false },
+      { "dayOfWeek": 5, "opensAt": "09:00", "closesAt": "23:00", "isClosed": false },
+      { "dayOfWeek": 6, "opensAt": "10:00", "closesAt": "23:00", "isClosed": false }
+    ],
+    "media": {
+      "logoUrl": "https://cdn.example.com/taco-fiesta/logo.png",
+      "photoUrls": [
+        "https://cdn.example.com/taco-fiesta/photo-1.jpg",
+        "https://cdn.example.com/taco-fiesta/photo-2.jpg"
+      ]
+    },
+    "documents": {
+      "businessLicenseUrl": "https://cdn.example.com/taco-fiesta/license.pdf",
+      "healthPermitUrl": "https://cdn.example.com/taco-fiesta/health.pdf",
+      "insuranceUrl": "https://cdn.example.com/taco-fiesta/insurance.pdf",
+      "taxRegistrationUrl": "https://cdn.example.com/taco-fiesta/tax.pdf"
+    }
+  }
+}
+
+docs {
+  Creates a restaurant partner account with full onboarding data.
+
+  Expected success response:
+  - 201 Created
+  - user.id, user.name, user.email, user.role
+  - restaurant.id, restaurant.name, restaurant.slug, restaurant.status (PENDING)
+}

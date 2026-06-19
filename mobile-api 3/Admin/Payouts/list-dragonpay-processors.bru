@@ -1,0 +1,15 @@
+meta {
+  name: list-dragonpay-processors
+  type: http
+  seq: 0
+}
+
+get {
+  url: {{baseUrl}}/api/admin/payouts/dragonpay-processors
+  body: none
+  auth: none
+}
+
+headers {
+  Cookie: {{adminSessionCookie}}
+}

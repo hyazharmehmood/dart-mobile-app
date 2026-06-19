@@ -1,0 +1,21 @@
+meta {
+  name: Get Admin Order
+  type: http
+  seq: 2
+}
+
+get {
+  url: {{baseUrl}}/api/admin/orders/{{orderId}}
+  body: none
+  auth: none
+}
+
+headers {
+  Cookie: {{adminSessionCookie}}
+}
+
+docs {
+  Loads a single order for admin visibility across restaurants.
+
+  Requires an authenticated ADMIN NextAuth session cookie.
+}

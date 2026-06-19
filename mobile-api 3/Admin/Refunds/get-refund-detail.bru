@@ -1,0 +1,15 @@
+meta {
+  name: get-refund-detail
+  type: http
+  seq: 2
+}
+
+get {
+  url: {{baseUrl}}/api/admin/refunds/{{refundId}}
+  body: none
+  auth: none
+}
+
+headers {
+  Cookie: {{adminSessionCookie}}
+}

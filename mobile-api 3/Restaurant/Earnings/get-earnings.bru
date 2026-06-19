@@ -1,0 +1,15 @@
+meta {
+  name: get-earnings
+  type: http
+  seq: 1
+}
+
+get {
+  url: {{baseUrl}}/api/restaurant/earnings
+  body: none
+  auth: none
+}
+
+headers {
+  Cookie: {{restaurantSessionCookie}}
+}

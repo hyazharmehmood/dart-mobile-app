@@ -1,0 +1,33 @@
+meta {
+  name: Upload Customer Image
+  type: http
+  seq: 1
+}
+
+post {
+  url: {{baseUrl}}/api/customer/uploads
+  body: multipartForm
+  auth: none
+}
+
+headers {
+  Authorization: Bearer {{customerAccessToken}}
+}
+
+body:multipart-form {
+  file: @file(/path/to/profile-image.png)
+  purpose: customer-profile-image
+  folder: profile-images
+}
+
+docs {
+  Uploads a customer-owned image to Cloudinary.
+  
+  Allowed types:
+  - JPG
+  - PNG
+  - WebP
+  - GIF
+  
+  Use asset.secureUrl as imageUrl in PATCH /api/customer/profile.
+}

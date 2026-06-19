@@ -1,38 +1,21 @@
-import { useState } from "react";
-import {
-  Alert,
-  KeyboardAvoidingView,
-  Platform,
-  Pressable,
-  StatusBar,
-  Text,
-  TextInput,
-  View
-} from "react-native";
+import { Formik } from "formik";
+import Ionicons from "@expo/vector-icons/Ionicons";
+import { KeyboardAvoidingView, Platform, Pressable, StatusBar, Text, View } from "react-native";
+import * as Yup from "yup";
 
 import AppLogo from "../components/AppLogo";
-import PrimaryButton from "../components/PrimaryButton";
-import { signupCustomer } from "../services/customerService";
+import Button from "../components/ui/Button";
+import TextField from "../components/ui/TextField";
+import { useToast } from "../components/ui/ToastProvider";
 import useAddressStore from "../store/useAddressStore";
 import useAuthStore from "../store/useAuthStore";
 
-function Field({ label, value, onChangeText, placeholder, secureTextEntry, className = "" }) {
-  return (
-    <View className={`mb-4 ${className}`}>
-      <Text className="mb-2 text-sm font-medium text-ink">{label}</Text>
-      <TextInput
-        value={value}
-        onChangeText={onChangeText}
-        placeholder={placeholder}
-        secureTextEntry={secureTextEntry}
-        placeholderTextColor="#A3A3A3"
-        className="h-12 rounded-2xl border border-[#D9D9D9] px-4 text-base text-ink"
-        keyboardType={label === "Email" ? "email-address" : "default"}
-        autoCapitalize={label.includes("Name") ? "words" : "none"}
-      />
-    </View>
-  );
-}
+const signupSchema = Yup.object().shape({
+  firstName: Yup.string().min(2, "Minimum 2 characters").required("First name is required"),
+  lastName: Yup.string().min(2, "Minimum 2 characters").required("Last name is required"),
+  email: Yup.string().email("Enter a valid email").required("Email is required"),
+  password: Yup.string().min(8, "Password must be at least 8 characters").required("Password is required")
+});
 
 function SocialButton({ title }) {
   return (
@@ -45,39 +28,35 @@ function SocialButton({ title }) {
 
 export default function SignupScreen({ navigation }) {
   const signup = useAuthStore((state) => state.signup);
+  const continueAsGuest = useAuthStore((state) => state.continueAsGuest);
   const isLoading = useAuthStore((state) => state.isLoading);
-  const setLoading = useAuthStore((state) => state.setLoading);
-  const setError = useAuthStore((state) => state.setError);
   const deliveryAddress = useAddressStore((state) => state.address);
-  const [firstName, setFirstName] = useState("");
-  const [lastName, setLastName] = useState("");
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
+  const hasUnsyncedAddress = useAddressStore((state) => state.hasUnsyncedAddress);
+  const setFromProfile = useAddressStore((state) => state.setFromProfile);
+  const { showToast } = useToast();
 
-  const handleSignup = async () => {
+  const handleSignup = async (values) => {
     const payload = {
-      firstName: firstName.trim() || "Azhar",
-      lastName: lastName.trim() || "Mehmood",
-      email: email.trim() || "hyazharmehmood@gmail.com",
-      password: password || "Azhar123@",
-      address: deliveryAddress
+      firstName: values.firstName.trim(),
+      lastName: values.lastName.trim(),
+      email: values.email.trim(),
+      password: values.password
     };
 
+    if (hasUnsyncedAddress && deliveryAddress) {
+      payload.address = deliveryAddress;
+    }
+
     try {
-      setLoading(true);
-      setError(null);
-      await signupCustomer(payload);
-      signup(payload);
+      const session = await signup(payload);
+      setFromProfile(session.profile || session.user);
     } catch (error) {
       const message =
-        error?.response?.data?.message ||
+        error?.response?.data?.error ||
         error?.message ||
         "Signup failed. Please check your details and try again.";
 
-      setError(message);
-      Alert.alert("Signup failed", message);
-    } finally {
-      setLoading(false);
+      showToast({ type: "error", title: "Signup failed", message });
     }
   };
 
@@ -88,69 +67,98 @@ export default function SignupScreen({ navigation }) {
         behavior={Platform.OS === "ios" ? "padding" : undefined}
         className="flex-1"
       >
-        <View className="px-6 pb-5 pt-10">
-          <View className="mb-5 flex-row items-start justify-between">
-            <View>
-              <Text className="text-2xl text-white">x</Text>
-              <AppLogo size={48} className="mt-5" />
-              <Text className="mt-2 text-[22px] font-extrabold text-white">Welcome Back</Text>
-              <Text className="mt-1 text-sm text-white">
-                slect your preferred methode to continue
-              </Text>
+        <View className="px-6 pb-6 pt-16">
+          <View className="mb-8 flex-row items-center justify-between">
+            <Pressable
+              accessibilityRole="button"
+              testID="signup-back-button"
+              onPress={() => navigation.canGoBack() ? navigation.goBack() : navigation.navigate("Login")}
+              className="h-12 w-12 items-center justify-center rounded-full bg-white/15"
+            >
+              <Ionicons name="chevron-back" size={26} color="#FFFFFF" />
+            </Pressable>
+            <Pressable
+              accessibilityRole="button"
+              testID="signup-skip-button"
+              onPress={continueAsGuest}
+              className="px-1 py-2"
+            >
+              <Text className="text-base font-bold text-white">Skip</Text>
+            </Pressable>
+          </View>
+          <AppLogo size={56} />
+          <Text className="mt-5 text-[24px] font-extrabold text-white">Welcome Back</Text>
+          <Text className="mt-1 text-base text-white">
+            slect your preferred methode to continue
+          </Text>
+        </View>
+
+        <Formik
+          initialValues={{ firstName: "", lastName: "", email: "", password: "" }}
+          validationSchema={signupSchema}
+          onSubmit={handleSignup}
+        >
+          {({ handleChange, handleBlur, handleSubmit, values, errors, touched }) => (
+            <View className="flex-1 rounded-t-[28px] bg-white px-6 pt-5">
+              <View className="flex-row gap-4">
+                <TextField
+                  label="First Name"
+                  value={values.firstName}
+                  onChangeText={handleChange("firstName")}
+                  onBlur={handleBlur("firstName")}
+                  error={errors.firstName}
+                  touched={touched.firstName}
+                  placeholder="first name"
+                  autoCapitalize="words"
+                  className="flex-1"
+                />
+                <TextField
+                  label="Last Name"
+                  value={values.lastName}
+                  onChangeText={handleChange("lastName")}
+                  onBlur={handleBlur("lastName")}
+                  error={errors.lastName}
+                  touched={touched.lastName}
+                  placeholder="Last name"
+                  autoCapitalize="words"
+                  className="flex-1"
+                />
+              </View>
+
+              <TextField
+                label="Email"
+                value={values.email}
+                onChangeText={handleChange("email")}
+                onBlur={handleBlur("email")}
+                error={errors.email}
+                touched={touched.email}
+                placeholder="email address"
+                keyboardType="email-address"
+              />
+              <TextField
+                label="Password"
+                value={values.password}
+                onChangeText={handleChange("password")}
+                onBlur={handleBlur("password")}
+                error={errors.password}
+                touched={touched.password}
+                placeholder="enter your password"
+                secureTextEntry
+              />
+
+              <Button title="Sign up" onPress={handleSubmit} loading={isLoading} className="mt-1" />
+              <SocialButton title="Continue with google" />
+              <SocialButton title="Continue with Phone" />
+
+              <View className="mt-auto mb-5 flex-row justify-center">
+                <Text className="text-sm text-muted">Don't have an account? </Text>
+                <Pressable onPress={() => navigation.navigate("Login")}>
+                  <Text className="text-sm font-bold text-primary">Login</Text>
+                </Pressable>
+              </View>
             </View>
-            <Pressable onPress={handleSignup}>
-              <Text className="text-xs text-white">Skip</Text>
-            </Pressable>
-          </View>
-        </View>
-
-        <View className="flex-1 rounded-t-[28px] bg-white px-6 pt-5">
-          <View className="flex-row gap-4">
-            <Field
-              label="First Name"
-              value={firstName}
-              onChangeText={setFirstName}
-              placeholder="first name"
-              className="flex-1"
-            />
-            <Field
-              label="Last Name"
-              value={lastName}
-              onChangeText={setLastName}
-              placeholder="Last name"
-              className="flex-1"
-            />
-          </View>
-
-          <Field
-            label="Email"
-            value={email}
-            onChangeText={setEmail}
-            placeholder="email address"
-          />
-          <Field
-            label="Password"
-            value={password}
-            onChangeText={setPassword}
-            placeholder="enter your password"
-            secureTextEntry
-          />
-
-          <PrimaryButton
-            title={isLoading ? "Signing up..." : "Sign up"}
-            onPress={handleSignup}
-            className="mt-1"
-          />
-          <SocialButton title="Continue with google" />
-          <SocialButton title="Continue with Phone" />
-
-          <View className="mt-auto mb-5 flex-row justify-center">
-            <Text className="text-sm text-muted">Don't have an account? </Text>
-            <Pressable onPress={() => navigation.navigate("Login")}>
-              <Text className="text-sm font-bold text-primary">Login</Text>
-            </Pressable>
-          </View>
-        </View>
+          )}
+        </Formik>
       </KeyboardAvoidingView>
     </View>
   );

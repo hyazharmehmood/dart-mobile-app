@@ -1,0 +1,22 @@
+meta {
+  name: Feed Order Again
+  type: http
+  seq: 2
+}
+
+get {
+  url: {{baseUrl}}/api/customer/feed/order-again?lat=31.44269&lng=74.20766&limit=4
+  body: none
+  auth: none
+}
+
+headers {
+  Authorization: Bearer {{customerAccessToken}}
+}
+
+docs {
+  Returns unique restaurants from the customer's delivered order history, filtered by current delivery radius.
+  
+  Requires:
+  - Authorization: Bearer <customer access token>
+}

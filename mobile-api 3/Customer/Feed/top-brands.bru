@@ -1,0 +1,19 @@
+meta {
+  name: Feed Top Brands
+  type: http
+  seq: 1
+}
+
+get {
+  url: {{baseUrl}}/api/customer/feed/top-brands?lat=31.44269&lng=74.20766&limit=8
+  body: none
+  auth: none
+}
+
+docs {
+  Returns highly rated approved restaurants that can deliver to the provided customer coordinates.
+  
+  Query params:
+  - lat/lng: active customer address coordinates
+  - limit: max 20
+}

@@ -1,0 +1,19 @@
+meta {
+  name: get-order-events
+  type: http
+  seq: 1
+}
+
+get {
+  url: {{baseUrl}}/api/orders/{{orderId}}/events
+  body: none
+  auth: none
+}
+
+headers {
+  Authorization: Bearer {{driverAccessToken}}
+}
+
+docs {
+  Returns the durable order event timeline for an order assigned to the driver.
+}

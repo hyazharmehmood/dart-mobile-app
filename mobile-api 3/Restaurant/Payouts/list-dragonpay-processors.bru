@@ -1,0 +1,15 @@
+meta {
+  name: list-dragonpay-processors
+  type: http
+  seq: 1
+}
+
+get {
+  url: {{baseUrl}}/api/restaurant/payouts/dragonpay-processors
+  body: none
+  auth: none
+}
+
+headers {
+  Cookie: {{restaurantSessionCookie}}
+}

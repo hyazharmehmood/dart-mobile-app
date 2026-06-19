@@ -1,0 +1,15 @@
+meta {
+  name: delete-payout-method
+  type: http
+  seq: 6
+}
+
+delete {
+  url: {{baseUrl}}/api/restaurant/payout-methods/{{payoutMethodId}}
+  body: none
+  auth: none
+}
+
+headers {
+  Cookie: {{restaurantSessionCookie}}
+}

@@ -1,0 +1,19 @@
+meta {
+  name: list-notifications
+  type: http
+  seq: 1
+}
+
+get {
+  url: {{baseUrl}}/api/notifications?limit=20&unreadOnly=false
+  body: none
+  auth: none
+}
+
+headers {
+  Authorization: Bearer {{driverAccessToken}}
+}
+
+docs {
+  Lists driver-visible in-app notifications and unreadCount. Use unreadOnly=true for badge-only inbox screens.
+}

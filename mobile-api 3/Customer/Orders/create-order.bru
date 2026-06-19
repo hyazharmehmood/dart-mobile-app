@@ -1,0 +1,53 @@
+meta {
+  name: Create Customer Order
+  type: http
+  seq: 1
+}
+
+post {
+  url: {{baseUrl}}/api/customer/orders
+  body: json
+  auth: none
+}
+
+headers {
+  Content-Type: application/json
+  Authorization: Bearer {{customerAccessToken}}
+}
+
+body:json {
+  {
+    "restaurantSlug": "{{restaurantSlug}}",
+    "deliveryAddress": "12, Street 54 DHA Pine Avenue Lahore, Punjab, Pakistan",
+    "items": [
+      {
+        "menuItemId": "{{menuItemId}}",
+        "quantity": 2,
+        "modifierSelections": [
+          {
+            "groupId": "{{modifierGroupId}}",
+            "optionIds": ["{{modifierOptionId}}"]
+          }
+        ],
+        "specialInstructions": "No mayo",
+        "unavailablePreference": "REMOVE_ITEM"
+      }
+    ]
+  }
+}
+
+docs {
+  Creates a customer order from active menu items.
+
+  Requires:
+  - Authorization: Bearer <customer access token from customer signup/login>
+
+  Rules:
+  - Restaurant must be approved, open, and accepting orders.
+  - Menu items must belong to the restaurant and have ACTIVE status.
+  - Required modifier groups must include valid optionIds.
+  - Linked add-on item stock and availability are validated.
+  - Stock is decremented when stock is tracked.
+  - Totals are calculated server-side.
+  - For simple items without modifiers, send only menuItemId and quantity.
+}

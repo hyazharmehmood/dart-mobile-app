@@ -1,0 +1,22 @@
+meta {
+  name: update-driver-status
+  type: http
+  seq: 3
+}
+
+patch {
+  url: {{baseUrl}}/api/admin/drivers/{{driverId}}/status
+  body: json
+  auth: none
+}
+
+headers {
+  Cookie: {{adminSessionCookie}}
+}
+
+body:json {
+  {
+    "status": "APPROVED",
+    "reviewNotes": ""
+  }
+}

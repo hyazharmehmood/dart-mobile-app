@@ -1,0 +1,19 @@
+meta {
+  name: Delete Customer Address
+  type: http
+  seq: 5
+}
+
+delete {
+  url: {{baseUrl}}/api/customer/addresses/{{customerAddressId}}
+  body: none
+  auth: none
+}
+
+headers {
+  Authorization: Bearer {{customerAccessToken}}
+}
+
+docs {
+  Deletes a saved address. If the deleted address was active, the newest remaining address becomes active.
+}

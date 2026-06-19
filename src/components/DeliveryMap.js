@@ -1,5 +1,6 @@
 import MapView, { Marker, PROVIDER_GOOGLE } from "react-native-maps";
 import { StyleSheet, Text, View } from "react-native";
+import Ionicons from "@expo/vector-icons/Ionicons";
 
 const fallbackRegion = {
   latitude: 24.8607,
@@ -33,7 +34,7 @@ export default function DeliveryMap({
       {showCenterPin && (
         <View className="pointer-events-none absolute left-1/2 top-1/2 -ml-5 -mt-10 items-center">
           <View className="h-10 w-10 items-center justify-center rounded-full bg-primary shadow-md">
-            <Text className="text-lg font-bold text-white">@</Text>
+            <Ionicons name="location" size={22} color="#FFFFFF" />
           </View>
           <View className="h-4 w-1 rounded-full bg-primary" />
         </View>

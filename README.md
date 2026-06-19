@@ -1,4 +1,4 @@
-# Food Delivery App
+# dart
 
 Expo React Native starter app built with JavaScript, NativeWind, React Navigation,
 Zustand, and Axios.
@@ -20,7 +20,7 @@ cp .env.example .env
 Then set:
 
 ```text
-EXPO_PUBLIC_API_BASE_URL=https://your-api-domain.com
+EXPO_PUBLIC_API_BASE_URL=https://app.dart.com.ph
 EXPO_PUBLIC_GOOGLE_MAPS_API_KEY=your_google_maps_api_key_here
 ```
 
