@@ -6,6 +6,7 @@ import {
   listCustomerAddresses,
   updateCustomerAddress
 } from "../services/addressService";
+import { clearStoredAddress, loadStoredAddress, saveStoredAddress } from "../services/addressStorage";
 
 export const defaultDeliveryAddress = {
   label: "Current location",
@@ -57,11 +58,29 @@ const useAddressStore = create((set, get) => ({
   isLoading: false,
   error: null,
   hasUnsyncedAddress: false,
-  setAddress: (address, options = {}) =>
+  setAddress: (address, options = {}) => {
+    const nextAddress = normalizeAddress(address);
+    saveStoredAddress(nextAddress).catch(() => {});
     set({
-      address: normalizeAddress(address),
+      address: nextAddress,
       hasUnsyncedAddress: options.unsynced ?? true
-    }),
+    });
+  },
+  loadPersistedAddress: async () => {
+    const storedAddress = normalizeAddress(await loadStoredAddress());
+
+    if (!storedAddress) {
+      return null;
+    }
+
+    set({
+      address: storedAddress,
+      activeAddress: storedAddress,
+      hasUnsyncedAddress: true
+    });
+
+    return storedAddress;
+  },
   setFromProfile: (profile) => {
     const profileAddress =
       profile?.activeAddress ||
@@ -75,6 +94,7 @@ const useAddressStore = create((set, get) => ({
     }
 
     const address = normalizeAddress(profileAddress);
+    saveStoredAddress(address).catch(() => {});
     set({
       address,
       activeAddress: address,
@@ -97,6 +117,10 @@ const useAddressStore = create((set, get) => ({
         hasUnsyncedAddress: false,
         isLoading: false
       });
+
+      if (activeAddress) {
+        saveStoredAddress(activeAddress).catch(() => {});
+      }
 
       return data;
     } catch (error) {
@@ -135,6 +159,7 @@ const useAddressStore = create((set, get) => ({
         ? await updateCustomerAddress(currentAddress.id, payload)
         : await createCustomerAddress(payload);
       const activeAddress = normalizeAddress(data.address || payload);
+      saveStoredAddress(activeAddress).catch(() => {});
 
       set({
         address: activeAddress,
@@ -158,24 +183,31 @@ const useAddressStore = create((set, get) => ({
   },
   activateAddress: async (address) => {
     if (!address?.id) {
-      set({ address: normalizeAddress(address), activeAddress: normalizeAddress(address) });
+      const activeAddress = normalizeAddress(address);
+      saveStoredAddress(activeAddress).catch(() => {});
+      set({ address: activeAddress, activeAddress });
       return;
     }
 
     const data = await updateCustomerAddress(address.id, { isActive: true });
     const activeAddress = normalizeAddress(data.address || address);
+    saveStoredAddress(activeAddress).catch(() => {});
     set({ address: activeAddress, activeAddress, hasUnsyncedAddress: false });
   },
   deleteAddress: async (addressId) => {
     const data = await deleteCustomerAddress(addressId);
     const activeAddress = normalizeAddress(data.activeAddress);
+    if (activeAddress) {
+      saveStoredAddress(activeAddress).catch(() => {});
+    }
     set({
       savedAddresses: get().savedAddresses.filter((address) => address.id !== addressId),
       activeAddress,
       address: activeAddress || defaultDeliveryAddress
     });
   },
-  resetAddressState: () =>
+  resetAddressState: () => {
+    clearStoredAddress().catch(() => {});
     set({
       address: defaultDeliveryAddress,
       savedAddresses: [],
@@ -183,7 +215,8 @@ const useAddressStore = create((set, get) => ({
       isLoading: false,
       error: null,
       hasUnsyncedAddress: false
-    })
+    });
+  }
 }));
 
 export default useAddressStore;

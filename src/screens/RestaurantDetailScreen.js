@@ -292,7 +292,7 @@ function MenuItemCard({ item, cartSummary, isExpanded, isAdding, onAdd, onCountP
         {hasCartQuantity && !isExpanded ? (
           <Pressable
             onPress={() => onCountPress(item)}
-            className="absolute bottom-3 right-3 h-11 w-11 items-center justify-center rounded-full bg-ink shadow-md"
+            className="absolute bottom-3 right-3 h-11 w-11 items-center justify-center rounded-full bg-primary shadow-md"
           >
             <Text className="text-base font-bold text-white">{cartQuantity}</Text>
           </Pressable>
@@ -322,11 +322,11 @@ function MenuItemCard({ item, cartSummary, isExpanded, isAdding, onAdd, onCountP
           <Pressable
             disabled={isAdding}
             onPress={() => onAdd(item)}
-            className={`absolute bottom-3 right-3 h-11 w-11 items-center justify-center rounded-full bg-white shadow-lg ${
+            className={`absolute bottom-3 right-3 h-11 w-11 items-center justify-center rounded-full bg-primary shadow-lg ${
               isAdding ? "opacity-50" : ""
             }`}
           >
-            <Ionicons name="add" size={26} color="#1F2933" />
+            <Ionicons name="add" size={26} color="#FFFFFF" />
           </Pressable>
         ) : null}
       </View>
@@ -760,10 +760,16 @@ export default function RestaurantDetailScreen({ navigation, route }) {
       setActiveQuantityItemId(null);
       await loadQuote();
     } catch (error) {
+      const apiMessage =
+        error?.response?.data?.error ||
+        error?.response?.data?.message ||
+        error?.message ||
+        "Please try again in a moment.";
+
       showToast({
         type: "error",
-        title: "Cart total unavailable",
-        message: "Item was added, but totals could not be refreshed."
+        title: "Add to cart failed",
+        message: apiMessage
       });
     } finally {
       setTimeout(() => {

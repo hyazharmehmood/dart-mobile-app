@@ -26,6 +26,7 @@ export default function AppNavigator() {
   const restoreSession = useAuthStore((state) => state.restoreSession);
   const finishRestore = useAuthStore((state) => state.finishRestore);
   const logout = useAuthStore((state) => state.logout);
+  const loadPersistedAddress = useAddressStore((state) => state.loadPersistedAddress);
   const setFromProfile = useAddressStore((state) => state.setFromProfile);
   const hydrateServerCart = useCartStore((state) => state.hydrateServerCart);
   const resetLocalCartState = useCartStore((state) => state.resetLocalCartState);
@@ -45,6 +46,10 @@ export default function AppNavigator() {
     }, 4000);
 
     const restore = async () => {
+      if (active) {
+        await loadPersistedAddress().catch(() => null);
+      }
+
       const session = await restoreSession();
 
       if (active && session?.profile) {
@@ -60,7 +65,7 @@ export default function AppNavigator() {
       active = false;
       clearTimeout(timeout);
     };
-  }, [finishRestore, restoreSession, setFromProfile]);
+  }, [finishRestore, loadPersistedAddress, restoreSession, setFromProfile]);
 
   useEffect(() => {
     if (user && !isGuest) {
@@ -97,6 +102,9 @@ export default function AppNavigator() {
             <Stack.Screen name="LocationAccess" component={LocationAccessScreen} />
             <Stack.Screen name="LocationEnable" component={LocationEnableScreen} />
             <Stack.Screen name="Address" component={AddressScreen} />
+            <Stack.Screen name="Home" component={HomeScreen} />
+            <Stack.Screen name="RestaurantDetail" component={RestaurantDetailScreen} />
+            <Stack.Screen name="Cart" component={CartScreen} />
             <Stack.Screen name="Login" component={LoginScreen} />
             <Stack.Screen name="Signup" component={SignupScreen} />
           </>

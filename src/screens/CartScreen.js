@@ -230,6 +230,12 @@ export default function CartScreen({ navigation }) {
         modifierSelections: []
       });
       await refreshQuote();
+    } catch (error) {
+      showToast({
+        type: "error",
+        title: "Add to cart failed",
+        message: error?.response?.data?.error || error?.message || "Please try again in a moment."
+      });
     } finally {
       setTimeout(() => {
         addLockRef.current = false;

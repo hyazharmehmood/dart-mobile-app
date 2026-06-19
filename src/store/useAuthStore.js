@@ -13,8 +13,38 @@ function sessionFromResponse(data) {
   return {
     user: data.user,
     auth: data.auth,
-    profile: data.profile || data.user || null
+    profile: data.profile || data.user?.customerProfile || data.user || null
   };
+}
+
+function profileFromResponse(data, fallback = null) {
+  return data?.profile || data?.user?.customerProfile || data?.user || fallback;
+}
+
+function userFromProfile(user, profile) {
+  return {
+    ...user,
+    id: profile?.id || user?.id,
+    name: profile?.name || user?.name,
+    email: profile?.email || user?.email,
+    phone: profile?.phone || user?.phone,
+    customerProfile: profile?.profile || user?.customerProfile
+  };
+}
+
+async function withFreshProfile(session) {
+  try {
+    const profileData = await getCustomerProfile();
+    const profile = profileFromResponse(profileData, session.profile);
+
+    return {
+      ...session,
+      profile,
+      user: userFromProfile(session.user, profile)
+    };
+  } catch (error) {
+    return session;
+  }
 }
 
 const useAuthStore = create((set, get) => ({
@@ -35,19 +65,20 @@ const useAuthStore = create((set, get) => ({
       const session = sessionFromResponse(data);
 
       setApiAccessToken(session.auth.accessToken);
-      await saveSession(session);
+      const freshSession = await withFreshProfile(session);
+      await saveSession(freshSession);
 
       set({
-        user: session.user,
-        profile: session.profile,
-        auth: session.auth,
-        token: session.auth.accessToken,
+        user: freshSession.user,
+        profile: freshSession.profile,
+        auth: freshSession.auth,
+        token: freshSession.auth.accessToken,
         isAuthenticated: true,
         isGuest: false,
         isLoading: false
       });
 
-      return session;
+      return freshSession;
     } catch (error) {
       const message = getApiErrorMessage(error, "Invalid email or password.");
       set({ error: message, isLoading: false });
@@ -62,19 +93,20 @@ const useAuthStore = create((set, get) => ({
       const session = sessionFromResponse(data);
 
       setApiAccessToken(session.auth.accessToken);
-      await saveSession(session);
+      const freshSession = await withFreshProfile(session);
+      await saveSession(freshSession);
 
       set({
-        user: session.user,
-        profile: session.profile,
-        auth: session.auth,
-        token: session.auth.accessToken,
+        user: freshSession.user,
+        profile: freshSession.profile,
+        auth: freshSession.auth,
+        token: freshSession.auth.accessToken,
         isAuthenticated: true,
         isGuest: false,
         isLoading: false
       });
 
-      return session;
+      return freshSession;
     } catch (error) {
       const message = getApiErrorMessage(error, "Signup failed. Please check your details.");
       set({ error: message, isLoading: false });
@@ -95,18 +127,12 @@ const useAuthStore = create((set, get) => ({
 
       setApiAccessToken(session.auth.accessToken);
       const profileData = await getCustomerProfile();
-      const profile = profileData.profile;
+      const profile = profileFromResponse(profileData, session.profile);
 
       const restoredSession = {
         ...session,
         profile,
-        user: {
-          ...session.user,
-          id: profile?.id || session.user?.id,
-          name: profile?.name || session.user?.name,
-          email: profile?.email || session.user?.email,
-          phone: profile?.phone || session.user?.phone
-        }
+        user: userFromProfile(session.user, profile)
       };
 
       await saveSession(restoredSession);
@@ -131,8 +157,9 @@ const useAuthStore = create((set, get) => ({
   finishRestore: () => set({ isRestoring: false }),
   refreshProfile: async () => {
     const data = await getCustomerProfile();
-    set({ profile: data.profile });
-    return data.profile;
+    const profile = profileFromResponse(data, get().profile);
+    set({ profile, user: userFromProfile(get().user, profile) });
+    return profile;
   },
   setLoading: (isLoading) => set({ isLoading }),
   setError: (error) => set({ error }),
@@ -147,7 +174,7 @@ const useAuthStore = create((set, get) => ({
       isGuest: true,
       error: null
     }),
-  logout: async () => {
+  logout: async ({ asGuest = false } = {}) => {
     setApiAccessToken(null);
     await clearSession();
     set({
@@ -156,7 +183,7 @@ const useAuthStore = create((set, get) => ({
       auth: null,
       token: null,
       isAuthenticated: false,
-      isGuest: false,
+      isGuest: asGuest,
       isLoading: false,
       error: null
     });

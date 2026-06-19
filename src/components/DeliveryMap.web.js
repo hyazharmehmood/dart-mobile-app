@@ -37,10 +37,12 @@ export default function DeliveryMap({
 
       {showCenterPin && (
         <View className="absolute left-1/2 top-1/2 -ml-5 -mt-10 items-center">
-          <View className="h-10 w-10 items-center justify-center rounded-full bg-primary shadow-md">
-            <Ionicons name="location" size={22} color="#FFFFFF" />
+          <View className="h-12 w-12 items-center justify-center rounded-full bg-white shadow-lg">
+            <View className="h-10 w-10 items-center justify-center rounded-full bg-primary">
+              <Ionicons name="location" size={22} color="#FFFFFF" />
+            </View>
           </View>
-          <View className="h-4 w-1 rounded-full bg-primary" />
+          <View className="-mt-1 h-5 w-1 rounded-full bg-primary" />
         </View>
       )}
 

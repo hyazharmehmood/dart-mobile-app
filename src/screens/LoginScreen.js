@@ -33,6 +33,14 @@ export default function LoginScreen({ navigation }) {
   const setFromProfile = useAddressStore((state) => state.setFromProfile);
   const { showToast } = useToast();
 
+  const continueToGuestHome = () => {
+    continueAsGuest();
+    navigation.reset({
+      index: 0,
+      routes: [{ name: "Home" }]
+    });
+  };
+
   const handleLogin = async (values) => {
     try {
       const session = await login({
@@ -45,6 +53,11 @@ export default function LoginScreen({ navigation }) {
       if (hasUnsyncedAddress) {
         await syncSelectedAddress().catch(() => null);
       }
+
+      navigation.reset({
+        index: 0,
+        routes: [{ name: "Home" }]
+      });
     } catch (error) {
       const message =
         error?.response?.data?.error ||
@@ -75,7 +88,7 @@ export default function LoginScreen({ navigation }) {
             <Pressable
               accessibilityRole="button"
               testID="login-skip-button"
-              onPress={continueAsGuest}
+              onPress={continueToGuestHome}
               className="px-1 py-2"
             >
               <Text className="text-base font-bold text-white">Skip</Text>

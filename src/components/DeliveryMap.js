@@ -1,4 +1,5 @@
-import MapView, { Marker, PROVIDER_GOOGLE } from "react-native-maps";
+import { useEffect, useRef } from "react";
+import MapView, { PROVIDER_GOOGLE } from "react-native-maps";
 import { StyleSheet, Text, View } from "react-native";
 import Ionicons from "@expo/vector-icons/Ionicons";
 
@@ -16,27 +17,54 @@ export default function DeliveryMap({
   className = "",
   showCenterPin = true
 }) {
+  const mapRef = useRef(null);
+
+  useEffect(() => {
+    if (!region?.latitude || !region?.longitude) {
+      return;
+    }
+
+    mapRef.current?.animateToRegion(region, 280);
+  }, [region?.latitude, region?.longitude]);
+
+  const handleCoordinatePress = (event) => {
+    const coordinate = event?.nativeEvent?.coordinate;
+
+    if (!coordinate) {
+      return;
+    }
+
+    onMapPress?.({
+      nativeEvent: {
+        coordinate
+      }
+    });
+  };
+
   return (
     <View className={`overflow-hidden ${className}`}>
       <MapView
+        ref={mapRef}
         provider={PROVIDER_GOOGLE}
         style={StyleSheet.absoluteFill}
         initialRegion={region}
         region={region}
         onRegionChangeComplete={onRegionChangeComplete}
-        onPress={onMapPress}
+        onPress={handleCoordinatePress}
+        onLongPress={handleCoordinatePress}
+        onPoiClick={handleCoordinatePress}
         showsUserLocation
         showsMyLocationButton={false}
         toolbarEnabled={false}
-      >
-        <Marker coordinate={{ latitude: region.latitude, longitude: region.longitude }} />
-      </MapView>
+      />
       {showCenterPin && (
         <View className="pointer-events-none absolute left-1/2 top-1/2 -ml-5 -mt-10 items-center">
-          <View className="h-10 w-10 items-center justify-center rounded-full bg-primary shadow-md">
-            <Ionicons name="location" size={22} color="#FFFFFF" />
+          <View className="h-12 w-12 items-center justify-center rounded-full bg-white shadow-lg">
+            <View className="h-10 w-10 items-center justify-center rounded-full bg-primary">
+              <Ionicons name="location" size={22} color="#FFFFFF" />
+            </View>
           </View>
-          <View className="h-4 w-1 rounded-full bg-primary" />
+          <View className="-mt-1 h-5 w-1 rounded-full bg-primary" />
         </View>
       )}
     </View>

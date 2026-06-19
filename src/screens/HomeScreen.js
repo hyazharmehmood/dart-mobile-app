@@ -263,6 +263,50 @@ function GuestAccountView({ onLoginPress }) {
   );
 }
 
+function CustomerAccountView({ profile, user, onLogout }) {
+  const displayName =
+    profile?.name ||
+    user?.name ||
+    [profile?.firstName, profile?.lastName].filter(Boolean).join(" ") ||
+    "Dart customer";
+
+  return (
+    <SafeAreaView className="flex-1 bg-white">
+      <StatusBar barStyle="dark-content" backgroundColor="#FFFFFF" />
+      <View className="border-b border-border px-6 pb-5 pt-4">
+        <View className="flex-row items-center justify-between">
+          <Text className="text-[22px] font-extrabold text-ink">Account</Text>
+          <Pressable className="h-11 w-11 items-center justify-center rounded-full bg-surface">
+            <Ionicons name="settings-outline" size={25} color="#FF6400" />
+          </Pressable>
+        </View>
+      </View>
+
+      <ScrollView className="flex-1" contentContainerStyle={{ paddingBottom: 118 }} showsVerticalScrollIndicator={false}>
+        <View className="px-6 py-8">
+          <View className="rounded-2xl bg-[#FFF0E5] px-5 py-5">
+            <View className="h-14 w-14 items-center justify-center rounded-full bg-primary">
+              <Ionicons name="person" size={28} color="#FFFFFF" />
+            </View>
+            <Text className="mt-4 text-xl font-bold text-ink">{displayName}</Text>
+            <Text className="mt-1 text-sm text-muted">{user?.email || profile?.email || "Customer account"}</Text>
+          </View>
+
+          <Text className="mt-8 text-[18px] font-semibold text-ink">General</Text>
+          <View className="mt-2">
+            <AccountRow icon="help-circle-outline" title="Help center" />
+            <AccountRow icon="document-text-outline" title="Terms & policies" />
+          </View>
+
+          <Pressable onPress={onLogout} className="mt-8 h-14 items-center justify-center rounded-2xl bg-primary">
+            <Text className="text-base font-bold text-white">Logout</Text>
+          </Pressable>
+        </View>
+      </ScrollView>
+    </SafeAreaView>
+  );
+}
+
 function FeedView({
   cuisineItems,
   error,
@@ -418,7 +462,9 @@ export default function HomeScreen({ navigation }) {
   const [searchQuery, setSearchQuery] = useState("");
   const searchInputRef = useRef(null);
   const user = useAuthStore((state) => state.user);
+  const profile = useAuthStore((state) => state.profile);
   const isGuest = useAuthStore((state) => state.isGuest);
+  const logout = useAuthStore((state) => state.logout);
   const address = useAddressStore((state) => state.address);
   const cuisines = useFeedStore((state) => state.cuisines);
   const topBrands = useFeedStore((state) => state.topBrands);
@@ -479,10 +525,18 @@ export default function HomeScreen({ navigation }) {
     setActiveTab(tab);
   };
 
+  const handleLogout = async () => {
+    await logout({ asGuest: true });
+  };
+
   return (
     <View className="flex-1 bg-white">
-      {activeTab === "account" && isGuest ? (
-        <GuestAccountView onLoginPress={() => navigation.navigate("Login")} />
+      {activeTab === "account" ? (
+        user ? (
+          <CustomerAccountView profile={profile} user={user} onLogout={handleLogout} />
+        ) : (
+          <GuestAccountView onLoginPress={() => navigation.navigate("Login")} />
+        )
       ) : (
         <SafeAreaView className="flex-1" style={{ backgroundColor: DARK_GREEN }}>
           <FeedView

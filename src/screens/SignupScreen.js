@@ -35,6 +35,14 @@ export default function SignupScreen({ navigation }) {
   const setFromProfile = useAddressStore((state) => state.setFromProfile);
   const { showToast } = useToast();
 
+  const continueToGuestHome = () => {
+    continueAsGuest();
+    navigation.reset({
+      index: 0,
+      routes: [{ name: "Home" }]
+    });
+  };
+
   const handleSignup = async (values) => {
     const payload = {
       firstName: values.firstName.trim(),
@@ -50,6 +58,11 @@ export default function SignupScreen({ navigation }) {
     try {
       const session = await signup(payload);
       setFromProfile(session.profile || session.user);
+
+      navigation.reset({
+        index: 0,
+        routes: [{ name: "Home" }]
+      });
     } catch (error) {
       const message =
         error?.response?.data?.error ||
@@ -80,7 +93,7 @@ export default function SignupScreen({ navigation }) {
             <Pressable
               accessibilityRole="button"
               testID="signup-skip-button"
-              onPress={continueAsGuest}
+              onPress={continueToGuestHome}
               className="px-1 py-2"
             >
               <Text className="text-base font-bold text-white">Skip</Text>

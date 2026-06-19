@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import Ionicons from "@expo/vector-icons/Ionicons";
 import {
+  ActivityIndicator,
   Keyboard,
   KeyboardAvoidingView,
   Platform,
@@ -44,33 +45,42 @@ function coordinateFallbackAddress({ latitude, longitude }) {
   };
 }
 
+function regionFromAddress(address) {
+  return {
+    latitude: Number(address?.latitude) || defaultDeliveryAddress.latitude,
+    longitude: Number(address?.longitude) || defaultDeliveryAddress.longitude,
+    latitudeDelta: 0.018,
+    longitudeDelta: 0.018
+  };
+}
+
 export default function AddressScreen({ navigation, route }) {
   const currentAddress = useAddressStore((state) => state.address);
+  const activeAddress = useAddressStore((state) => state.activeAddress);
+  const hasUnsyncedAddress = useAddressStore((state) => state.hasUnsyncedAddress);
   const isChangingAddress = Boolean(route?.params?.returnToHome);
-  const [address, setAddress] = useState(
-    isChangingAddress ? currentAddress?.address || currentAddress?.addressLine1 || "" : ""
+  const initialAddressText = currentAddress?.address || currentAddress?.addressLine1 || "";
+  const hasSavedAddress = Boolean(
+    (isChangingAddress || activeAddress || hasUnsyncedAddress) &&
+      currentAddress?.latitude &&
+      currentAddress?.longitude
   );
-  const [selectedAddress, setSelectedAddress] = useState(
-    isChangingAddress ? currentAddress?.address || currentAddress?.addressLine1 || "" : ""
-  );
-  const [selectedAddressDetails, setSelectedAddressDetails] = useState(isChangingAddress ? currentAddress : null);
+  const [address, setAddress] = useState(isChangingAddress ? initialAddressText : "");
+  const [selectedAddress, setSelectedAddress] = useState(hasSavedAddress ? initialAddressText : "");
+  const [selectedAddressDetails, setSelectedAddressDetails] = useState(hasSavedAddress ? currentAddress : null);
   const [suggestions, setSuggestions] = useState([]);
   const [isInputFocused, setIsInputFocused] = useState(false);
   const [isSearching, setIsSearching] = useState(false);
   const [isResolvingMap, setIsResolvingMap] = useState(false);
   const [shouldOpenFeed, setShouldOpenFeed] = useState(false);
-  const [region, setRegion] = useState({
-    latitude: defaultDeliveryAddress.latitude,
-    longitude: defaultDeliveryAddress.longitude,
-    latitudeDelta: 0.018,
-    longitudeDelta: 0.018
-  });
+  const [region, setRegion] = useState(regionFromAddress(currentAddress));
   const { showToast } = useToast();
   const saveAddress = useAddressStore((state) => state.setAddress);
   const continueAsGuest = useAuthStore((state) => state.continueAsGuest);
   const isGuest = useAuthStore((state) => state.isGuest);
   const hasSelection = Boolean(selectedAddress);
   const showResults = isInputFocused && address.trim().length > 2 && !hasSelection;
+  const canFindRestaurants = Boolean(selectedAddressDetails?.latitude && selectedAddressDetails?.longitude);
 
   const resetToHome = () => {
     navigation.reset({
@@ -102,6 +112,11 @@ export default function AddressScreen({ navigation, route }) {
 
   useEffect(() => {
     const loadLocation = async () => {
+      if (hasSavedAddress) {
+        setRegion(regionFromAddress(currentAddress));
+        return;
+      }
+
       const { status } = await Location.requestForegroundPermissionsAsync();
 
       if (status !== "granted") {
@@ -114,15 +129,16 @@ export default function AddressScreen({ navigation, route }) {
       }
 
       const current = await Location.getCurrentPositionAsync({});
-      setRegion((currentRegion) => ({
-        ...currentRegion,
+      setRegion({
+        latitudeDelta: 0.018,
+        longitudeDelta: 0.018,
         latitude: current.coords.latitude,
         longitude: current.coords.longitude
-      }));
+      });
     };
 
     loadLocation();
-  }, [showToast]);
+  }, [currentAddress, hasSavedAddress, showToast]);
 
   useEffect(() => {
     if (!showResults || hasSelection) {
@@ -150,9 +166,16 @@ export default function AddressScreen({ navigation, route }) {
     return () => clearTimeout(timer);
   }, [address, hasSelection, showResults, showToast]);
 
-  const chooseManualAddress = ({ shouldFinish = false } = {}) => {
+  const chooseManualAddress = async ({ shouldFinish = false } = {}) => {
     Keyboard.dismiss();
     setIsInputFocused(false);
+
+    if (selectedAddressDetails) {
+      if (shouldFinish) {
+        finishAddressSelection();
+      }
+      return;
+    }
 
     const manualAddress = {
       ...defaultDeliveryAddress,
@@ -166,9 +189,10 @@ export default function AddressScreen({ navigation, route }) {
       longitude: region.longitude
     };
 
-    setSelectedAddress(manualAddress.address);
-    setSelectedAddressDetails(manualAddress);
-    saveAddress(manualAddress);
+    await saveMapLocation({
+      latitude: region.latitude,
+      longitude: region.longitude
+    }, manualAddress.address);
 
     if (shouldFinish) {
       finishAddressSelection();
@@ -200,15 +224,14 @@ export default function AddressScreen({ navigation, route }) {
     }
   };
 
-  const cancelSearch = () => {
+  const clearSearch = () => {
     setAddress("");
     setSelectedAddress("");
     setSelectedAddressDetails(null);
     setSuggestions([]);
-    setIsInputFocused(false);
   };
 
-  const saveMapLocation = async (coordinate) => {
+  const saveMapLocation = async (coordinate, fallbackLabel = "") => {
     const nextRegion = {
       ...region,
       latitude: coordinate.latitude,
@@ -220,9 +243,11 @@ export default function AddressScreen({ navigation, route }) {
 
     try {
       const place = await reverseGeocodeCoordinate(coordinate);
-      const deliveryAddress = place
-        ? mapPlaceToDeliveryAddress(place)
-        : coordinateFallbackAddress(coordinate);
+      const deliveryAddress = place ? mapPlaceToDeliveryAddress(place) : {
+        ...coordinateFallbackAddress(coordinate),
+        address: fallbackLabel || "Selected map location",
+        addressLine1: fallbackLabel || "Selected map location"
+      };
 
       setAddress(deliveryAddress.address || deliveryAddress.addressLine1);
       setSelectedAddress(deliveryAddress.address || deliveryAddress.addressLine1);
@@ -232,10 +257,16 @@ export default function AddressScreen({ navigation, route }) {
     } catch (error) {
       const fallbackAddress = coordinateFallbackAddress(coordinate);
 
-      setAddress(fallbackAddress.address);
-      setSelectedAddress(fallbackAddress.address);
-      setSelectedAddressDetails(fallbackAddress);
-      saveAddress(fallbackAddress);
+      const fallbackLabelAddress = {
+        ...fallbackAddress,
+        address: fallbackLabel || fallbackAddress.address,
+        addressLine1: fallbackLabel || fallbackAddress.addressLine1
+      };
+
+      setAddress(fallbackLabelAddress.address);
+      setSelectedAddress(fallbackLabelAddress.address);
+      setSelectedAddressDetails(fallbackLabelAddress);
+      saveAddress(fallbackLabelAddress);
     } finally {
       setIsResolvingMap(false);
     }
@@ -249,7 +280,13 @@ export default function AddressScreen({ navigation, route }) {
   };
 
   const handleMapPress = (event) => {
-    saveMapLocation(event.nativeEvent.coordinate);
+    const coordinate = event?.nativeEvent?.coordinate;
+
+    if (!coordinate) {
+      return;
+    }
+
+    saveMapLocation(coordinate);
   };
 
   const chooseGoogleAddress = async (prediction) => {
@@ -317,12 +354,16 @@ export default function AddressScreen({ navigation, route }) {
               <>
                 <View className="h-12 flex-row items-center rounded-xl bg-[#F4F4F4] px-4">
                   <Ionicons name="search" size={18} color="#6B7280" style={{ marginRight: 12 }} />
-                  <TextInput
-                    value={address}
-                    onChangeText={setAddress}
-                    className="flex-1 text-base text-ink"
-                    placeholder="Enter your addresss"
-                    placeholderTextColor="#9CA3AF"
+                    <TextInput
+                      value={address}
+                      onChangeText={(value) => {
+                        setAddress(value);
+                        setSelectedAddress("");
+                        setSelectedAddressDetails(null);
+                      }}
+                      className="flex-1 text-base text-ink"
+                      placeholder="Enter your address"
+                      placeholderTextColor="#9CA3AF"
                     returnKeyType="search"
                     blurOnSubmit
                     onFocus={() => setIsInputFocused(true)}
@@ -333,15 +374,16 @@ export default function AddressScreen({ navigation, route }) {
                       }
                     }}
                   />
-                  {isInputFocused && (
-                    <Pressable onPress={cancelSearch} className="ml-3 h-8 w-8 items-center justify-center">
-                      <Ionicons name="ellipsis-horizontal" size={20} color="#D81B60" />
+                  {address ? (
+                    <Pressable onPress={clearSearch} className="ml-3 h-8 w-8 items-center justify-center rounded-full bg-white">
+                      <Ionicons name="close-circle" size={20} color="#9CA3AF" />
                     </Pressable>
-                  )}
+                  ) : null}
                 </View>
                 <Pressable onPress={useCurrentLocation} className="mt-4 flex-row items-center">
-                  <Ionicons name="locate-outline" size={20} color="#1F2933" style={{ marginRight: 12 }} />
-                  <Text className="text-base text-ink">Used my current location</Text>
+                  <Ionicons name="locate-outline" size={20} color="#00A85A" style={{ marginRight: 12 }} />
+                  <Text className="text-base font-semibold text-[#00A85A]">Use my current location</Text>
+                  {isResolvingMap ? <ActivityIndicator className="ml-2" size="small" color="#00A85A" /> : null}
                 </Pressable>
                 {!isInputFocused && (
                   <>
@@ -356,7 +398,7 @@ export default function AddressScreen({ navigation, route }) {
                     )}
                     <Button
                       title="Find Restaurants"
-                      disabled={!address.trim()}
+                      disabled={!canFindRestaurants}
                       onPress={() => chooseManualAddress({ shouldFinish: true })}
                       className="mt-5"
                     />
@@ -371,19 +413,27 @@ export default function AddressScreen({ navigation, route }) {
                     {isSearching && (
                       <Text className="mb-5 text-sm text-muted">Searching Google addresses...</Text>
                     )}
+                    {!isSearching && !suggestions.length && address.trim().length > 2 ? (
+                      <Text className="mb-5 text-sm text-muted">No addresses found. Try a more complete address.</Text>
+                    ) : null}
                     {suggestions.map((item) => (
                       <Pressable
                         key={item.place_id}
                         onPress={() => chooseGoogleAddress(item)}
-                        className="mb-5 flex-row items-start bg-white"
+                        className="mb-5 flex-row items-start rounded-2xl bg-white"
                       >
                         <View className="mr-4 h-7 w-7 items-center justify-center">
                           <Ionicons name="business-outline" size={22} color="#9E9E9E" />
                         </View>
                         <View className="flex-1">
-                          <Text className="text-base leading-6 text-[#444444]" numberOfLines={1}>
-                            {item.description}
+                          <Text className="text-base leading-6 text-[#444444]" numberOfLines={2}>
+                            {item.structured_formatting?.main_text || item.description}
                           </Text>
+                          {item.structured_formatting?.secondary_text ? (
+                            <Text className="mt-1 text-sm text-muted" numberOfLines={1}>
+                              {item.structured_formatting.secondary_text}
+                            </Text>
+                          ) : null}
                         </View>
                       </Pressable>
                     ))}
@@ -408,9 +458,10 @@ export default function AddressScreen({ navigation, route }) {
                       </View>
                     </View>
                     <Pressable
-                      onPress={() => {
-                        setSelectedAddress("");
-                        setSelectedAddressDetails(null);
+	                    onPress={() => {
+	                        setSelectedAddress("");
+	                        setSelectedAddressDetails(null);
+	                        setIsInputFocused(true);
                       }}
                     >
                       <Ionicons name="create-outline" size={22} color="#1F2933" />
@@ -427,6 +478,7 @@ export default function AddressScreen({ navigation, route }) {
                 </View>
                 <Button
                   title="Find Restaurant"
+                  disabled={!canFindRestaurants}
                   onPress={finishAddressSelection}
                   className="mt-5"
                 />

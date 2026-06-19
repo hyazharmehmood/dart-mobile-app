@@ -4,7 +4,6 @@ import {
   addCustomerCartItem,
   clearCustomerCart,
   getCustomerCart,
-  removeCustomerCartItem,
   updateCustomerCart,
   updateCustomerCartItem
 } from "../services/customerCartService";
@@ -51,19 +50,36 @@ function branchIdFrom(restaurant, fallbackBranchId = null) {
 }
 
 function restaurantFromCart(cart, currentRestaurant = null) {
-  return cart?.restaurant || cart?.store || currentRestaurant || null;
+  const restaurant = cart?.restaurant || cart?.store || currentRestaurant || null;
+
+  if (restaurant) {
+    return restaurant;
+  }
+
+  if (cart?.restaurantId || cart?.restaurantSlug || cart?.restaurantName) {
+    return {
+      id: cart.restaurantId || null,
+      slug: cart.restaurantSlug || null,
+      name: cart.restaurantName || "Dart Restaurant",
+      branchId: cart.branchId || null,
+      branchName: cart.branchName || null
+    };
+  }
+
+  return null;
 }
 
 function normalizeServerItem(line) {
   const menuItem = line?.menuItem || line?.item || {};
   const customizations = line?.customizations || {};
-  const selections = customizations.selections || line?.modifierSelections || [];
-  const unitPrice = Number(line?.unitPriceSnapshot ?? line?.unitPrice ?? line?.basePrice ?? menuItem.price) || 0;
+  const selections = customizations.selections || line?.modifierSelections || line?.selectedOptions || [];
+  const unitPrice =
+    Number(line?.unitPriceSnapshot ?? line?.unitPrice ?? line?.price ?? line?.basePrice ?? menuItem.price) || 0;
 
   return {
     id: line?.id || line?.cartItemId || line?.lineId || null,
     cartItemId: line?.id || line?.cartItemId || line?.lineId || null,
-    menuItemId: line?.menuItemId || menuItem.id,
+    menuItemId: line?.menuItemId || line?.itemId || menuItem.id,
     name: line?.name || menuItem.name || line?.displayName || "Menu item",
     imageUrl: line?.imageUrl || menuItem.imageUrl || menuItem.photoUrls?.[0] || "",
     basePrice: unitPrice,
@@ -88,7 +104,7 @@ function normalizeServerCart(data, currentRestaurant = null) {
   }
 
   const restaurant = restaurantFromCart(cart, currentRestaurant);
-  const items = (cart.items || cart.lineItems || cart.cartItems || []).map(normalizeServerItem);
+  const items = (cart.lines || cart.items || cart.lineItems || cart.cartItems || []).map(normalizeServerItem);
 
   return {
     id: cart.id || null,
@@ -101,11 +117,17 @@ function normalizeServerCart(data, currentRestaurant = null) {
 
 function hasCartShape(data) {
   const cart = data?.cart || data?.customerCart || data;
-  return Boolean(cart && !Array.isArray(cart) && (cart.items || cart.lineItems || cart.cartItems));
+  return Boolean(cart && !Array.isArray(cart) && (cart.lines || cart.items || cart.lineItems || cart.cartItems));
+}
+
+function compactPayload(payload) {
+  return Object.fromEntries(
+    Object.entries(payload).filter(([, value]) => value !== null && typeof value !== "undefined" && value !== "")
+  );
 }
 
 function cartPayload(item, restaurant, currentBranchId, replaceCart = false) {
-  return {
+  return compactPayload({
     restaurantSlug: item.restaurantSlug || restaurantSlugFrom(restaurant),
     branchId: item.branchId || branchIdFrom(restaurant, currentBranchId),
     menuItemId: item.menuItemId,
@@ -114,22 +136,22 @@ function cartPayload(item, restaurant, currentBranchId, replaceCart = false) {
     specialInstructions: item.specialInstructions || "",
     unavailablePreference: item.unavailablePreference || "REMOVE_ITEM",
     replaceCart
-  };
+  });
 }
 
 function quotePayload({ restaurantSlug, branchId, items }) {
   if (isAuthenticated()) {
-    return {
+    return compactPayload({
       useCart: true,
       branchId,
       restaurantSlug
-    };
+    });
   }
 
-  return {
+  return compactPayload({
     restaurantSlug,
     items: items.map(quoteItem)
-  };
+  });
 }
 
 const useCartStore = create((set, get) => ({
@@ -266,10 +288,7 @@ const useCartStore = create((set, get) => ({
       set({ isMutating: true, error: null });
 
       try {
-        const data =
-          quantity <= 0
-            ? await removeCustomerCartItem(item.cartItemId)
-            : await updateCustomerCartItem(item.cartItemId, { quantity });
+        const data = await updateCustomerCartItem(item.cartItemId, { quantity: Math.max(0, quantity) });
         const nextCart = await get().refreshServerCart(data);
         set({ isMutating: false });
         return nextCart;
