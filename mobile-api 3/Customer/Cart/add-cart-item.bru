@@ -10,12 +10,12 @@ post {
   auth: bearer
 }
 
-auth:bearer {
-  token: {{customerAccessToken}}
-}
-
 headers {
   Content-Type: application/json
+}
+
+auth:bearer {
+  token: {{customerAccessToken}}
 }
 
 body:json {
@@ -29,6 +29,10 @@ body:json {
     "unavailablePreference": "REMOVE_ITEM",
     "replaceCart": false
   }
+}
+
+vars:pre-request {
+  branchId: branch_cmqhxlj90009ie3y82324hayk
 }
 
 docs {

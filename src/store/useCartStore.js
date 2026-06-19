@@ -35,18 +35,32 @@ function isAuthenticated() {
 }
 
 function restaurantSlugFrom(restaurant) {
-  return restaurant?.slug || restaurant?.restaurantSlug || restaurant?.id || restaurant?.restaurantId || null;
+  return restaurant?.slug || restaurant?.restaurantSlug || null;
+}
+
+function restaurantIdFrom(restaurant) {
+  return restaurant?.id || restaurant?.restaurantId || null;
 }
 
 function branchIdFrom(restaurant, fallbackBranchId = null) {
   return (
-    fallbackBranchId ||
     restaurant?.branchId ||
     restaurant?.activeBranchId ||
     restaurant?.defaultBranchId ||
     restaurant?.branches?.[0]?.id ||
+    fallbackBranchId ||
     null
   );
+}
+
+function restaurantIdentityFrom(restaurant) {
+  const restaurantSlug = restaurantSlugFrom(restaurant);
+  const restaurantId = restaurantIdFrom(restaurant);
+
+  return {
+    restaurantSlug,
+    restaurantId: restaurantSlug ? null : restaurantId
+  };
 }
 
 function restaurantFromCart(cart, currentRestaurant = null) {
@@ -98,6 +112,7 @@ function normalizeServerCart(data, currentRestaurant = null) {
     return {
       restaurant: currentRestaurant,
       restaurantSlug: restaurantSlugFrom(currentRestaurant),
+      restaurantId: restaurantIdFrom(currentRestaurant),
       branchId: branchIdFrom(currentRestaurant),
       items: []
     };
@@ -109,7 +124,8 @@ function normalizeServerCart(data, currentRestaurant = null) {
   return {
     id: cart.id || null,
     restaurant,
-    restaurantSlug: cart.restaurantSlug || restaurantSlugFrom(restaurant) || cart.restaurantId || null,
+    restaurantSlug: cart.restaurantSlug || restaurantSlugFrom(restaurant),
+    restaurantId: cart.restaurantId || restaurantIdFrom(restaurant),
     branchId: cart.branchId || branchIdFrom(restaurant),
     items
   };
@@ -127,8 +143,11 @@ function compactPayload(payload) {
 }
 
 function cartPayload(item, restaurant, currentBranchId, replaceCart = false) {
+  const identity = restaurantIdentityFrom(restaurant);
+
   return compactPayload({
-    restaurantSlug: item.restaurantSlug || restaurantSlugFrom(restaurant),
+    restaurantSlug: item.restaurantSlug || identity.restaurantSlug,
+    restaurantId: item.restaurantId || identity.restaurantId,
     branchId: item.branchId || branchIdFrom(restaurant, currentBranchId),
     menuItemId: item.menuItemId,
     quantity: item.quantity || 1,
@@ -139,17 +158,19 @@ function cartPayload(item, restaurant, currentBranchId, replaceCart = false) {
   });
 }
 
-function quotePayload({ restaurantSlug, branchId, items }) {
+function quotePayload({ restaurantSlug, restaurantId, branchId, items }) {
   if (isAuthenticated()) {
     return compactPayload({
       useCart: true,
       branchId,
-      restaurantSlug
+      restaurantSlug,
+      restaurantId
     });
   }
 
   return compactPayload({
     restaurantSlug,
+    restaurantId,
     items: items.map(quoteItem)
   });
 }
@@ -157,6 +178,7 @@ function quotePayload({ restaurantSlug, branchId, items }) {
 const useCartStore = create((set, get) => ({
   id: null,
   restaurantSlug: null,
+  restaurantId: null,
   branchId: null,
   restaurant: null,
   pendingReplaceCart: false,
@@ -168,13 +190,21 @@ const useCartStore = create((set, get) => ({
   error: null,
   setRestaurant: (restaurant) => {
     const nextSlug = restaurantSlugFrom(restaurant);
+    const nextRestaurantId = restaurantIdFrom(restaurant);
     const currentSlug = get().restaurantSlug;
+    const currentRestaurantId = get().restaurantId;
     const nextBranchId = branchIdFrom(restaurant, get().branchId);
-    const shouldReplaceCart = Boolean(currentSlug && nextSlug && currentSlug !== nextSlug);
+    const shouldReplaceCart = Boolean(
+      (currentSlug && nextSlug && currentSlug !== nextSlug) ||
+      (!currentSlug && !nextSlug && currentRestaurantId && nextRestaurantId && currentRestaurantId !== nextRestaurantId) ||
+      (currentSlug && nextRestaurantId && !nextSlug) ||
+      (currentRestaurantId && nextSlug && !currentSlug)
+    );
 
     set({
       restaurant,
       restaurantSlug: nextSlug,
+      restaurantId: nextRestaurantId,
       branchId: nextBranchId,
       pendingReplaceCart: shouldReplaceCart || get().pendingReplaceCart,
       items: shouldReplaceCart ? [] : get().items,
@@ -197,6 +227,7 @@ const useCartStore = create((set, get) => ({
         id: nextCart.id,
         restaurant: nextCart.restaurant,
         restaurantSlug: nextCart.restaurantSlug,
+        restaurantId: nextCart.restaurantId,
         branchId: nextCart.branchId,
         pendingReplaceCart: false,
         items: nextCart.items,
@@ -220,6 +251,7 @@ const useCartStore = create((set, get) => ({
       id: nextCart.id,
       restaurant: nextCart.restaurant || get().restaurant,
       restaurantSlug: nextCart.restaurantSlug || get().restaurantSlug,
+      restaurantId: nextCart.restaurantId || get().restaurantId,
       branchId: nextCart.branchId || get().branchId,
       pendingReplaceCart: false,
       items: nextCart.items,
@@ -240,8 +272,17 @@ const useCartStore = create((set, get) => ({
   addItem: async (item) => {
     if (isAuthenticated()) {
       const currentSlug = get().restaurantSlug;
+      const currentRestaurantId = get().restaurantId;
       const nextSlug = item.restaurantSlug || restaurantSlugFrom(get().restaurant);
-      const replaceCart = get().pendingReplaceCart || Boolean(currentSlug && nextSlug && currentSlug !== nextSlug);
+      const nextRestaurantId = item.restaurantId || restaurantIdFrom(get().restaurant);
+      const replaceCart =
+        get().pendingReplaceCart ||
+        Boolean(
+          (currentSlug && nextSlug && currentSlug !== nextSlug) ||
+          (!currentSlug && !nextSlug && currentRestaurantId && nextRestaurantId && currentRestaurantId !== nextRestaurantId) ||
+          (currentSlug && nextRestaurantId && !nextSlug) ||
+          (currentRestaurantId && nextSlug && !currentSlug)
+        );
 
       set({ isMutating: true, error: null });
 
@@ -312,7 +353,8 @@ const useCartStore = create((set, get) => ({
     if (isAuthenticated()) {
       const data = await updateCustomerCart({
         branchId,
-        restaurantSlug: get().restaurantSlug
+        restaurantSlug: get().restaurantSlug,
+        restaurantId: get().restaurantId
       });
       return get().refreshServerCart(data);
     }
@@ -333,6 +375,7 @@ const useCartStore = create((set, get) => ({
     set({
       id: null,
       restaurantSlug: null,
+      restaurantId: null,
       branchId: null,
       restaurant: null,
       pendingReplaceCart: false,
@@ -347,6 +390,7 @@ const useCartStore = create((set, get) => ({
     set({
       id: null,
       restaurantSlug: null,
+      restaurantId: null,
       branchId: null,
       restaurant: null,
       pendingReplaceCart: false,
@@ -358,9 +402,9 @@ const useCartStore = create((set, get) => ({
       error: null
     }),
   loadQuote: async () => {
-    const { restaurantSlug, branchId, items } = get();
+    const { restaurantSlug, restaurantId, branchId, items } = get();
 
-    if ((!restaurantSlug && !isAuthenticated()) || !items.length) {
+    if ((!restaurantSlug && !restaurantId && !isAuthenticated()) || !items.length) {
       set({ quote: null });
       return null;
     }
@@ -368,7 +412,7 @@ const useCartStore = create((set, get) => ({
     set({ isQuoting: true, error: null });
 
     try {
-      const data = await quoteOrder(quotePayload({ restaurantSlug, branchId, items }));
+      const data = await quoteOrder(quotePayload({ restaurantSlug, restaurantId, branchId, items }));
       set({ quote: data.quote, isQuoting: false });
       return data.quote;
     } catch (error) {

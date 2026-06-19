@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import Ionicons from "@expo/vector-icons/Ionicons";
 import {
+  ActivityIndicator,
   Image,
   Modal,
   Pressable,
@@ -279,7 +280,11 @@ function MenuItemCard({ item, cartSummary, isExpanded, isAdding, onAdd, onCountP
   const description = item.description || item.shortDescription || "";
 
   return (
-    <Pressable onPress={() => (hasCartQuantity ? onCountPress(item) : onAdd(item))} className="mb-6 w-[48%] active:opacity-90">
+    <Pressable
+      disabled={isAdding}
+      onPress={() => (hasCartQuantity ? onCountPress(item) : onAdd(item))}
+      className={`mb-6 w-[48%] active:opacity-90 ${isAdding ? "opacity-80" : ""}`}
+    >
       <View className="overflow-hidden rounded-2xl bg-[#F7F7F7] shadow-sm">
         {getItemImage(item) ? (
           <Image source={{ uri: getItemImage(item) }} className="h-40 w-full" resizeMode="cover" />
@@ -323,10 +328,14 @@ function MenuItemCard({ item, cartSummary, isExpanded, isAdding, onAdd, onCountP
             disabled={isAdding}
             onPress={() => onAdd(item)}
             className={`absolute bottom-3 right-3 h-11 w-11 items-center justify-center rounded-full bg-primary shadow-lg ${
-              isAdding ? "opacity-50" : ""
+              isAdding ? "opacity-75" : ""
             }`}
           >
-            <Ionicons name="add" size={26} color="#FFFFFF" />
+            {isAdding ? (
+              <ActivityIndicator size="small" color="#FFFFFF" />
+            ) : (
+              <Ionicons name="add" size={26} color="#FFFFFF" />
+            )}
           </Pressable>
         ) : null}
       </View>
