@@ -559,22 +559,24 @@ export default function HomeScreen({ navigation }) {
           <GuestAccountView onLoginPress={() => navigation.navigate("Login")} />
         )
       ) : (
-        <SafeAreaView className="flex-1" style={{ backgroundColor: DARK_GREEN }}>
-          <FeedView
-            cuisineItems={cuisineItems}
-            error={error}
-            isLoading={isLoading}
-            locationLabel={locationLabel}
-            nearbyItems={nearbyItems}
-            orderItems={orderItems}
-            brandItems={brandItems}
-            refreshFeed={refreshFeed}
-            searchInputRef={searchInputRef}
-            searchQuery={searchQuery}
-            onSearchChange={setSearchQuery}
-            onLocationPress={() => navigation.navigate("Address", { returnToHome: true })}
-            onRestaurantPress={openRestaurant}
-          />
+        <SafeAreaView className="flex-1" edges={["top"]} style={{ backgroundColor: DARK_GREEN }}>
+          <View className="flex-1 bg-white">
+            <FeedView
+              cuisineItems={cuisineItems}
+              error={error}
+              isLoading={isLoading}
+              locationLabel={locationLabel}
+              nearbyItems={nearbyItems}
+              orderItems={orderItems}
+              brandItems={brandItems}
+              refreshFeed={refreshFeed}
+              searchInputRef={searchInputRef}
+              searchQuery={searchQuery}
+              onSearchChange={setSearchQuery}
+              onLocationPress={() => navigation.navigate("Address", { returnToHome: true })}
+              onRestaurantPress={openRestaurant}
+            />
+          </View>
         </SafeAreaView>
       )}
 

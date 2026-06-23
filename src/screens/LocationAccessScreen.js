@@ -13,7 +13,7 @@ export default function LocationAccessScreen({ navigation }) {
           <Pressable
             accessibilityRole="button"
             testID="location-access-close-button"
-            onPress={() => navigation.navigate("Login")}
+            onPress={() => navigation.replace("Login")}
             className="h-12 w-12 items-center justify-center rounded-full bg-[#FFF0E5]"
           >
             <Ionicons name="close" size={26} color="#FF6400" />
@@ -21,7 +21,7 @@ export default function LocationAccessScreen({ navigation }) {
           <Pressable
             accessibilityRole="button"
             testID="location-access-skip-button"
-            onPress={() => navigation.navigate("Login")}
+            onPress={() => navigation.replace("Login")}
             className="px-1 py-2"
           >
             <Text className="text-base font-bold text-ink">Skip</Text>
@@ -54,7 +54,7 @@ export default function LocationAccessScreen({ navigation }) {
 
         <Button
           title="Continue"
-          onPress={() => navigation.navigate("LocationEnable")}
+          onPress={() => navigation.replace("LocationEnable")}
           className="mt-auto mb-5"
         />
       </View>

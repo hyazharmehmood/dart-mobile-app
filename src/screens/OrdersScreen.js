@@ -66,12 +66,21 @@ export default function OrdersScreen({ navigation }) {
     refresh();
   }, []);
 
+  const goBack = () => {
+    if (navigation.canGoBack()) {
+      navigation.goBack();
+      return;
+    }
+
+    navigation.navigate("Home");
+  };
+
   return (
     <SafeAreaView className="flex-1 bg-white">
       <StatusBar barStyle="dark-content" backgroundColor="#FFFFFF" />
       <View className="border-b border-border px-5 pb-4 pt-2">
         <View className="flex-row items-center">
-          <Pressable onPress={() => navigation.goBack()} className="mr-3 h-10 w-10 items-center justify-center rounded-full bg-[#F6F7F8]">
+          <Pressable onPress={goBack} className="mr-3 h-10 w-10 items-center justify-center rounded-full bg-[#F6F7F8]">
             <Ionicons name="arrow-back" size={24} color="#1F2933" />
           </Pressable>
           <View className="flex-1">

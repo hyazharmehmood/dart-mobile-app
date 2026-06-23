@@ -566,6 +566,14 @@ export default function RestaurantDetailScreen({ navigation, route }) {
   const cartItems = useCartStore((state) => state.items);
   const quote = useCartStore((state) => state.quote);
   const stickyMenuOffset = STICKY_MENU_SCROLL_OFFSET + insets.top;
+  const goBackToFeed = () => {
+    if (navigation.canGoBack()) {
+      navigation.goBack();
+      return;
+    }
+
+    navigation.navigate("Home");
+  };
 
   useEffect(() => {
     let active = true;
@@ -876,7 +884,7 @@ export default function RestaurantDetailScreen({ navigation, route }) {
                 )}
                 <View className="absolute left-5 right-5 top-12 flex-row items-center justify-between">
                   <Pressable
-                    onPress={() => navigation.goBack()}
+                    onPress={goBackToFeed}
                     className="h-12 w-12 items-center justify-center rounded-full bg-white shadow-md"
                   >
                     <Ionicons name="arrow-back" size={27} color="#1F2933" />
@@ -965,7 +973,7 @@ export default function RestaurantDetailScreen({ navigation, route }) {
                 activeCategoryId={activeCategoryId}
                 categories={categories}
                 isPinned={isMenuPinned}
-                onBack={() => navigation.goBack()}
+                onBack={goBackToFeed}
                 onCategoryPress={handleCategoryPress}
                 onLayout={(event) => {
                   if (!stickyHeaderYRef.current) {

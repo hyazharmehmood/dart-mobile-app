@@ -1,20 +1,20 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import Ionicons from "@expo/vector-icons/Ionicons";
 import {
-  ActivityIndicator,
   Keyboard,
   KeyboardAvoidingView,
   Platform,
   Pressable,
-  ScrollView,
   StatusBar,
   Text,
-  TextInput,
+  useWindowDimensions,
   View
 } from "react-native";
 import * as Location from "expo-location";
+import { SafeAreaView } from "react-native-safe-area-context";
 
 import DeliveryMap from "../components/DeliveryMap";
+import GoogleAddressSearch from "../components/GoogleAddressSearch";
 import Button from "../components/ui/Button";
 import { useToast } from "../components/ui/ToastProvider";
 import {
@@ -55,6 +55,7 @@ function regionFromAddress(address) {
 }
 
 export default function AddressScreen({ navigation, route }) {
+  const { height } = useWindowDimensions();
   const currentAddress = useAddressStore((state) => state.address);
   const activeAddress = useAddressStore((state) => state.activeAddress);
   const hasUnsyncedAddress = useAddressStore((state) => state.hasUnsyncedAddress);
@@ -74,6 +75,7 @@ export default function AddressScreen({ navigation, route }) {
   const [isResolvingMap, setIsResolvingMap] = useState(false);
   const [shouldOpenFeed, setShouldOpenFeed] = useState(false);
   const [region, setRegion] = useState(regionFromAddress(currentAddress));
+  const addressInputRef = useRef(null);
   const { showToast } = useToast();
   const saveAddress = useAddressStore((state) => state.setAddress);
   const continueAsGuest = useAuthStore((state) => state.continueAsGuest);
@@ -81,6 +83,9 @@ export default function AddressScreen({ navigation, route }) {
   const hasSelection = Boolean(selectedAddress);
   const showResults = isInputFocused && address.trim().length > 2 && !hasSelection;
   const canFindRestaurants = Boolean(selectedAddressDetails?.latitude && selectedAddressDetails?.longitude);
+  const isSearchPanelOpen = isInputFocused && !hasSelection;
+  const focusedSheetHeight = Math.min(Math.max(height * 0.72, 470), height - 86);
+  const suggestionListMaxHeight = Math.max(focusedSheetHeight - 165, 260);
 
   const resetToHome = () => {
     navigation.reset({
@@ -128,13 +133,21 @@ export default function AddressScreen({ navigation, route }) {
         return;
       }
 
-      const current = await Location.getCurrentPositionAsync({});
-      setRegion({
-        latitudeDelta: 0.018,
-        longitudeDelta: 0.018,
-        latitude: current.coords.latitude,
-        longitude: current.coords.longitude
-      });
+      try {
+        const current = await Location.getCurrentPositionAsync({});
+        setRegion({
+          latitudeDelta: 0.018,
+          longitudeDelta: 0.018,
+          latitude: current.coords.latitude,
+          longitude: current.coords.longitude
+        });
+      } catch (error) {
+        showToast({
+          type: "error",
+          title: "Location unavailable",
+          message: "Search your address manually or choose a pin on the map."
+        });
+      }
     };
 
     loadLocation();
@@ -219,6 +232,12 @@ export default function AddressScreen({ navigation, route }) {
         latitude: current.coords.latitude,
         longitude: current.coords.longitude
       });
+    } catch (error) {
+      showToast({
+        type: "error",
+        title: "Location unavailable",
+        message: "We could not get your current location. Try search or select on the map."
+      });
     } finally {
       setIsResolvingMap(false);
     }
@@ -289,6 +308,15 @@ export default function AddressScreen({ navigation, route }) {
     saveMapLocation(coordinate);
   };
 
+  const editSelectedAddress = () => {
+    setSelectedAddress("");
+    setSelectedAddressDetails(null);
+    setIsInputFocused(true);
+    requestAnimationFrame(() => {
+      addressInputRef.current?.focus();
+    });
+  };
+
   const chooseGoogleAddress = async (prediction) => {
     Keyboard.dismiss();
     setIsInputFocused(false);
@@ -332,12 +360,10 @@ export default function AddressScreen({ navigation, route }) {
   };
 
   return (
-    <KeyboardAvoidingView
-      behavior={Platform.OS === "ios" ? "padding" : undefined}
-      className="flex-1 bg-white"
-    >
+    <KeyboardAvoidingView behavior={Platform.OS === "ios" ? "padding" : undefined} className="flex-1 bg-white">
       <StatusBar barStyle="light-content" backgroundColor="#FF6400" />
-      <View className="flex-1">
+      <SafeAreaView className="flex-1 bg-primary" edges={["top"]}>
+        <View className="flex-1 bg-white">
         <DeliveryMap
           region={region}
           onRegionChangeComplete={setRegion}
@@ -345,54 +371,37 @@ export default function AddressScreen({ navigation, route }) {
           className="flex-1"
         />
         <View
-          className={`rounded-t-[28px] bg-white px-5 pb-5 pt-5 ${
-            isInputFocused && !hasSelection ? "min-h-[800px]" : ""
-          }`}
+          className="rounded-t-[28px] bg-white px-5 pb-5 pt-5"
+          style={isSearchPanelOpen ? { height: focusedSheetHeight } : undefined}
         >
-            <Text className="mb-4 text-xl font-extrabold text-ink">What is your address</Text>
+            <Text className="mb-4 text-[20px] font-extrabold text-ink">What is your address</Text>
             {!hasSelection ? (
               <>
-                <View className="h-12 flex-row items-center rounded-xl bg-[#F4F4F4] px-4">
-                  <Ionicons name="search" size={18} color="#6B7280" style={{ marginRight: 12 }} />
-                    <TextInput
-                      value={address}
-                      onChangeText={(value) => {
-                        setAddress(value);
-                        setSelectedAddress("");
-                        setSelectedAddressDetails(null);
-                      }}
-                      className="flex-1 text-base text-ink"
-                      placeholder="Enter your address"
-                      placeholderTextColor="#9CA3AF"
-                    returnKeyType="search"
-                    blurOnSubmit
-                    onFocus={() => setIsInputFocused(true)}
-                    onBlur={() => setIsInputFocused(false)}
-                    onSubmitEditing={() => {
-                      if (address.trim()) {
-                        chooseManualAddress();
-                      }
-                    }}
-                  />
-                  {address ? (
-                    <Pressable onPress={clearSearch} className="ml-3 h-8 w-8 items-center justify-center rounded-full bg-white">
-                      <Ionicons name="close-circle" size={20} color="#9CA3AF" />
-                    </Pressable>
-                  ) : null}
-                </View>
-                <Pressable onPress={useCurrentLocation} className="mt-4 flex-row items-center">
-                  <Ionicons name="locate-outline" size={20} color="#00A85A" style={{ marginRight: 12 }} />
-                  <Text className="text-base font-semibold text-[#00A85A]">Use my current location</Text>
-                  {isResolvingMap ? <ActivityIndicator className="ml-2" size="small" color="#00A85A" /> : null}
-                </Pressable>
+                <GoogleAddressSearch
+                  ref={addressInputRef}
+                  value={address}
+                  suggestions={suggestions}
+                  isFocused={isInputFocused}
+                  isSearching={isSearching}
+                  isResolvingLocation={isResolvingMap}
+                  maxResultsHeight={suggestionListMaxHeight}
+                  onChangeText={(value) => {
+                    setAddress(value);
+                    setSelectedAddress("");
+                    setSelectedAddressDetails(null);
+                  }}
+                  onClear={clearSearch}
+                  onFocus={() => setIsInputFocused(true)}
+                  onBlur={() => {
+                    setTimeout(() => setIsInputFocused(false), 120);
+                  }}
+                  onSubmit={() => chooseManualAddress()}
+                  onUseCurrentLocation={useCurrentLocation}
+                  onSelectMapCenter={selectMapCenter}
+                  onSelectSuggestion={chooseGoogleAddress}
+                />
                 {!isInputFocused && (
                   <>
-                    <Pressable onPress={selectMapCenter} className="mt-4 flex-row items-center">
-                      <Ionicons name="location-outline" size={20} color="#FF6400" style={{ marginRight: 12 }} />
-                      <Text className="text-base font-semibold text-primary">
-                        Select pinned location on map
-                      </Text>
-                    </Pressable>
                     {isResolvingMap && (
                       <Text className="mt-3 text-xs text-muted">Getting address from map...</Text>
                     )}
@@ -403,41 +412,6 @@ export default function AddressScreen({ navigation, route }) {
                       className="mt-5"
                     />
                   </>
-                )}
-                {isInputFocused && (
-                  <ScrollView
-                    className="mt-5 flex-1"
-                    keyboardShouldPersistTaps="handled"
-                    showsVerticalScrollIndicator={false}
-                  >
-                    {isSearching && (
-                      <Text className="mb-5 text-sm text-muted">Searching Google addresses...</Text>
-                    )}
-                    {!isSearching && !suggestions.length && address.trim().length > 2 ? (
-                      <Text className="mb-5 text-sm text-muted">No addresses found. Try a more complete address.</Text>
-                    ) : null}
-                    {suggestions.map((item) => (
-                      <Pressable
-                        key={item.place_id}
-                        onPress={() => chooseGoogleAddress(item)}
-                        className="mb-5 flex-row items-start rounded-2xl bg-white"
-                      >
-                        <View className="mr-4 h-7 w-7 items-center justify-center">
-                          <Ionicons name="business-outline" size={22} color="#9E9E9E" />
-                        </View>
-                        <View className="flex-1">
-                          <Text className="text-base leading-6 text-[#444444]" numberOfLines={2}>
-                            {item.structured_formatting?.main_text || item.description}
-                          </Text>
-                          {item.structured_formatting?.secondary_text ? (
-                            <Text className="mt-1 text-sm text-muted" numberOfLines={1}>
-                              {item.structured_formatting.secondary_text}
-                            </Text>
-                          ) : null}
-                        </View>
-                      </Pressable>
-                    ))}
-                  </ScrollView>
                 )}
               </>
             ) : (
@@ -457,13 +431,7 @@ export default function AddressScreen({ navigation, route }) {
                         ) : null}
                       </View>
                     </View>
-                    <Pressable
-	                    onPress={() => {
-	                        setSelectedAddress("");
-	                        setSelectedAddressDetails(null);
-	                        setIsInputFocused(true);
-                      }}
-                    >
+                    <Pressable onPress={editSelectedAddress} className="h-9 w-9 items-center justify-center rounded-full bg-white/70">
                       <Ionicons name="create-outline" size={22} color="#1F2933" />
                     </Pressable>
                   </View>
@@ -485,7 +453,8 @@ export default function AddressScreen({ navigation, route }) {
               </>
             )}
         </View>
-      </View>
+        </View>
+      </SafeAreaView>
     </KeyboardAvoidingView>
   );
 }

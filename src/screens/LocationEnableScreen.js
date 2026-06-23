@@ -1,10 +1,18 @@
 import Ionicons from "@expo/vector-icons/Ionicons";
-import { Pressable, StatusBar, Text, View } from "react-native";
+import { Linking, Pressable, StatusBar, Text, View } from "react-native";
 
 import BrandMark from "../components/BrandMark";
 import Button from "../components/ui/Button";
 
 export default function LocationEnableScreen({ navigation }) {
+  const openLocationSettings = async () => {
+    if (typeof Linking.openSettings === "function") {
+      await Linking.openSettings().catch(() => null);
+    }
+
+    navigation.navigate("Address");
+  };
+
   return (
     <View className="flex-1 bg-primary">
       <StatusBar barStyle="light-content" backgroundColor="#FF6400" />
@@ -13,7 +21,7 @@ export default function LocationEnableScreen({ navigation }) {
           <Pressable
             accessibilityRole="button"
             testID="location-enable-close-button"
-            onPress={() => navigation.navigate("Login")}
+            onPress={() => navigation.replace("Login")}
             className="h-12 w-12 items-center justify-center rounded-full bg-[#FFF0E5]"
           >
             <Ionicons name="close" size={26} color="#FF6400" />
@@ -21,7 +29,7 @@ export default function LocationEnableScreen({ navigation }) {
           <Pressable
             accessibilityRole="button"
             testID="location-enable-skip-button"
-            onPress={() => navigation.navigate("Login")}
+            onPress={() => navigation.replace("Login")}
             className="px-1 py-2"
           >
             <Text className="text-base font-bold text-ink">Skip</Text>
@@ -51,7 +59,7 @@ export default function LocationEnableScreen({ navigation }) {
         </View>
 
         <View className="mt-auto mb-5">
-          <Button title="Go to Settings" onPress={() => navigation.navigate("Address")} />
+          <Button title="Go to Settings" onPress={openLocationSettings} />
           <Pressable onPress={() => navigation.navigate("Address")} className="mt-4 items-center">
             <Text className="text-base font-bold text-ink">Enter address manually</Text>
           </Pressable>
