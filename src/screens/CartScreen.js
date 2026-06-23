@@ -459,7 +459,9 @@ export default function CartScreen({ navigation }) {
       setPaymentSheetVisible(false);
       navigation.navigate("PaymentWebView", {
         url: redirectUrl,
-        title: processorName(processor)
+        title: processorName(processor),
+        orderId: data?.order?.id || data?.payment?.orderId || data?.payment?.metadata?.orderId || null,
+        paymentId: data?.payment?.id || data?.payment?.paymentId || null
       });
       loadOrders().catch(() => null);
       showToast({

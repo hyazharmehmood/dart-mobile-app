@@ -22,6 +22,7 @@ export default function PaymentWebViewScreen({ navigation, route }) {
   const [paymentStatus, setPaymentStatus] = useState(null);
   const url = route?.params?.url;
   const title = route?.params?.title || "Dragonpay";
+  const initialOrderId = route?.params?.orderId || null;
 
   const inspectPaymentPageScript = `
     (function () {
@@ -39,6 +40,32 @@ export default function PaymentWebViewScreen({ navigation, route }) {
     navigation.goBack();
   };
 
+  const navigateAfterSuccess = async () => {
+    let targetOrderId = initialOrderId;
+
+    try {
+      const orders = await loadOrders({ limit: 10, force: true });
+      targetOrderId = targetOrderId || orders?.[0]?.id || orders?.[0]?.orderId || null;
+    } catch (error) {
+      targetOrderId = targetOrderId || null;
+    }
+
+    loadNotifications({ limit: 20 }).catch(() => null);
+
+    const routes = [{ name: "Home" }];
+
+    if (targetOrderId) {
+      routes.push({ name: "OrderDetail", params: { orderId: targetOrderId } });
+    } else {
+      routes.push({ name: "Orders" });
+    }
+
+    navigation.reset({
+      index: routes.length - 1,
+      routes
+    });
+  };
+
   const finalizePaymentSuccess = () => {
     if (successHandledRef.current) {
       return;
@@ -48,13 +75,12 @@ export default function PaymentWebViewScreen({ navigation, route }) {
     handledStatusRef.current = true;
     setPaymentStatus("success");
     clearCart().catch(() => resetLocalCartState());
-    loadOrders({ limit: 10 }).catch(() => null);
-    loadNotifications({ limit: 20 }).catch(() => null);
     showToast({
       type: "success",
       title: "Payment successful",
-      message: "Your cart has been cleared and your order is being updated."
+      message: "Opening your order details."
     });
+    navigateAfterSuccess();
   };
 
   const handlePaymentPageMessage = (event) => {
