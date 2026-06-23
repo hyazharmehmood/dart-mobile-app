@@ -16,6 +16,7 @@ import Button from "../components/ui/Button";
 import useAddressStore from "../store/useAddressStore";
 import useAuthStore from "../store/useAuthStore";
 import useFeedStore from "../store/useFeedStore";
+import useNotificationStore from "../store/useNotificationStore";
 
 const DARK_GREEN = "#003F2D";
 
@@ -201,13 +202,18 @@ function BottomNav({ activeTab, onTabPress }) {
   );
 }
 
-function AccountRow({ icon, iconColor = "#6B7280", title }) {
+function AccountRow({ icon, iconColor = "#6B7280", title, badge, onPress }) {
   return (
-    <Pressable className="flex-row items-center border-b border-border py-5 active:opacity-80">
+    <Pressable onPress={onPress} className="flex-row items-center border-b border-border py-5 active:opacity-80">
       <View className="mr-5 h-9 w-9 items-center justify-center rounded-full bg-surface">
         <Ionicons name={icon} size={22} color={iconColor} />
       </View>
       <Text className="flex-1 text-base font-semibold text-ink">{title}</Text>
+      {badge ? (
+        <View className="mr-2 min-w-[24px] items-center rounded-full bg-primary px-2 py-1">
+          <Text className="text-xs font-bold text-white">{badge}</Text>
+        </View>
+      ) : null}
       <Ionicons name="chevron-forward" size={22} color="#6B7280" />
     </Pressable>
   );
@@ -263,7 +269,7 @@ function GuestAccountView({ onLoginPress }) {
   );
 }
 
-function CustomerAccountView({ profile, user, onLogout }) {
+function CustomerAccountView({ profile, user, unreadCount, onLogout, onNotificationsPress, onOrdersPress }) {
   const displayName =
     profile?.name ||
     user?.name ||
@@ -294,6 +300,13 @@ function CustomerAccountView({ profile, user, onLogout }) {
 
           <Text className="mt-8 text-[18px] font-semibold text-ink">General</Text>
           <View className="mt-2">
+            <AccountRow icon="receipt-outline" title="Orders" onPress={onOrdersPress} />
+            <AccountRow
+              icon="notifications-outline"
+              title="Notifications"
+              badge={unreadCount || null}
+              onPress={onNotificationsPress}
+            />
             <AccountRow icon="help-circle-outline" title="Help center" />
             <AccountRow icon="document-text-outline" title="Terms & policies" />
           </View>
@@ -465,6 +478,7 @@ export default function HomeScreen({ navigation }) {
   const profile = useAuthStore((state) => state.profile);
   const isGuest = useAuthStore((state) => state.isGuest);
   const logout = useAuthStore((state) => state.logout);
+  const unreadCount = useNotificationStore((state) => state.unreadCount);
   const address = useAddressStore((state) => state.address);
   const cuisines = useFeedStore((state) => state.cuisines);
   const topBrands = useFeedStore((state) => state.topBrands);
@@ -533,7 +547,14 @@ export default function HomeScreen({ navigation }) {
     <View className="flex-1 bg-white">
       {activeTab === "account" ? (
         user ? (
-          <CustomerAccountView profile={profile} user={user} onLogout={handleLogout} />
+          <CustomerAccountView
+            profile={profile}
+            user={user}
+            unreadCount={unreadCount}
+            onLogout={handleLogout}
+            onNotificationsPress={() => navigation.navigate("Notifications")}
+            onOrdersPress={() => navigation.navigate("Orders")}
+          />
         ) : (
           <GuestAccountView onLoginPress={() => navigation.navigate("Login")} />
         )

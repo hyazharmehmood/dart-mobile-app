@@ -1,11 +1,15 @@
 import { useMemo, useRef, useState } from "react";
 import Ionicons from "@expo/vector-icons/Ionicons";
-import { Image, Pressable, ScrollView, StatusBar, Text, View } from "react-native";
+import { ActivityIndicator, Image, Linking, Modal, Pressable, ScrollView, StatusBar, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
 import Button from "../components/ui/Button";
 import { useToast } from "../components/ui/ToastProvider";
+import { createDragonpayPayment, listDragonpayProcessors } from "../services/paymentService";
+import useAddressStore from "../store/useAddressStore";
+import useAuthStore from "../store/useAuthStore";
 import useCartStore from "../store/useCartStore";
+import useOrderStore from "../store/useOrderStore";
 
 function money(value = 0) {
   const amount = Number(value) || 0;
@@ -34,6 +38,19 @@ function flattenMenuItems(restaurant) {
 
 function localSubtotal(items) {
   return items.reduce((sum, item) => sum + (Number(item.basePrice) || 0) * item.quantity, 0);
+}
+
+function numericMoney(value, fallback = 0) {
+  if (typeof value === "number") {
+    return value;
+  }
+
+  const parsed = Number(String(value || "").replace(/[^\d.]/g, ""));
+  return Number.isFinite(parsed) && parsed > 0 ? parsed : fallback;
+}
+
+function processorName(processor) {
+  return processor?.name || processor?.longName || processor?.shortName || processor?.procId || "Payment method";
 }
 
 function Step({ number, label, active }) {
@@ -166,19 +183,103 @@ function EmptyRecommendations() {
   );
 }
 
+function PaymentMethodSheet({
+  amountLabel,
+  isLoading,
+  isSubmitting,
+  processors,
+  visible,
+  onClose,
+  onSelect
+}) {
+  return (
+    <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
+      <View className="flex-1 justify-end bg-black/40">
+        <Pressable className="flex-1" onPress={onClose} />
+        <View className="max-h-[72%] rounded-t-[28px] bg-white px-5 pb-6 pt-4">
+          <View className="mb-4 flex-row items-center justify-between">
+            <View>
+              <Text className="text-xl font-bold text-ink">Choose payment</Text>
+              <Text className="mt-1 text-sm text-muted">Total {amountLabel}</Text>
+            </View>
+            <Pressable onPress={onClose} className="h-10 w-10 items-center justify-center rounded-full bg-[#F6F7F8]">
+              <Ionicons name="close" size={22} color="#1F2933" />
+            </Pressable>
+          </View>
+
+          {isLoading ? (
+            <View className="items-center justify-center py-10">
+              <ActivityIndicator color="#FF6400" />
+              <Text className="mt-3 text-sm font-semibold text-muted">Loading payment methods</Text>
+            </View>
+          ) : (
+            <ScrollView showsVerticalScrollIndicator={false}>
+              <Pressable
+                disabled={isSubmitting}
+                onPress={() => onSelect({ procId: "", name: "Show all payment methods on Dragonpay" })}
+                className="mb-3 flex-row items-center rounded-2xl border border-border bg-white px-4 py-4"
+              >
+                <View className="mr-3 h-11 w-11 items-center justify-center rounded-full bg-[#FFF0E5]">
+                  <Ionicons name="card-outline" size={22} color="#FF6400" />
+                </View>
+                <View className="flex-1">
+                  <Text className="text-base font-bold text-ink">Show all payment methods</Text>
+                  <Text className="mt-1 text-xs text-muted">Open Dragonpay hosted method selector</Text>
+                </View>
+                {isSubmitting ? <ActivityIndicator color="#FF6400" /> : <Ionicons name="chevron-forward" size={20} color="#9CA3AF" />}
+              </Pressable>
+
+              {processors.map((processor) => (
+                <Pressable
+                  key={processor.procId || processor.name}
+                  disabled={isSubmitting}
+                  onPress={() => onSelect(processor)}
+                  className="mb-3 flex-row items-center rounded-2xl border border-border bg-white px-4 py-4"
+                >
+                  <View className="mr-3 h-11 w-11 items-center justify-center rounded-full bg-[#F6F7F8]">
+                    <Ionicons name="wallet-outline" size={22} color="#1F2933" />
+                  </View>
+                  <View className="flex-1">
+                    <Text className="text-base font-bold text-ink">{processorName(processor)}</Text>
+                    <Text className="mt-1 text-xs text-muted" numberOfLines={1}>
+                      {processor.description || processor.type || processor.procId}
+                    </Text>
+                  </View>
+                  <Ionicons name="chevron-forward" size={20} color="#9CA3AF" />
+                </Pressable>
+              ))}
+            </ScrollView>
+          )}
+        </View>
+      </View>
+    </Modal>
+  );
+}
+
 export default function CartScreen({ navigation }) {
   const { showToast } = useToast();
   const addLockRef = useRef(false);
   const [addingRecommendationId, setAddingRecommendationId] = useState(null);
+  const [paymentSheetVisible, setPaymentSheetVisible] = useState(false);
+  const [paymentProcessors, setPaymentProcessors] = useState([]);
+  const [isLoadingProcessors, setIsLoadingProcessors] = useState(false);
+  const [isCreatingPayment, setIsCreatingPayment] = useState(false);
+  const user = useAuthStore((state) => state.user);
+  const isGuest = useAuthStore((state) => state.isGuest);
+  const address = useAddressStore((state) => state.address);
   const restaurant = useCartStore((state) => state.restaurant);
+  const branchId = useCartStore((state) => state.branchId);
   const items = useCartStore((state) => state.items);
   const quote = useCartStore((state) => state.quote);
   const isQuoting = useCartStore((state) => state.isQuoting);
   const updateQuantity = useCartStore((state) => state.updateQuantity);
   const addItem = useCartStore((state) => state.addItem);
   const loadQuote = useCartStore((state) => state.loadQuote);
+  const loadOrders = useOrderStore((state) => state.loadOrders);
 
   const subtotal = useMemo(() => localSubtotal(items), [items]);
+  const totalAmount = numericMoney(quote?.total ?? quote?.totals?.total ?? quote?.labels?.total, subtotal);
+  const totalLabel = currencyLabel(quote?.labels?.total, subtotal);
   const quoteItems = quote?.items || [];
   const recommendations = useMemo(() => {
     const cartIds = new Set(items.map((item) => item.menuItemId));
@@ -251,6 +352,82 @@ export default function CartScreen({ navigation }) {
     }
 
     navigation.navigate("Home");
+  };
+
+  const openCheckout = async () => {
+    if (!user || isGuest) {
+      showToast({
+        type: "info",
+        title: "Login required",
+        message: "Please sign in before checkout."
+      });
+      navigation.navigate("Login");
+      return;
+    }
+
+    if (!address?.address && !address?.addressLine1) {
+      showToast({
+        type: "error",
+        title: "Delivery address required",
+        message: "Please select your delivery location before payment."
+      });
+      navigation.navigate("Address", { returnToHome: true });
+      return;
+    }
+
+    try {
+      setIsLoadingProcessors(true);
+      setPaymentSheetVisible(true);
+      const freshQuote = await loadQuote();
+      const freshTotal = numericMoney(freshQuote?.total ?? freshQuote?.totals?.total ?? freshQuote?.labels?.total, totalAmount);
+      const data = await listDragonpayProcessors(freshTotal);
+      setPaymentProcessors(data?.processors || []);
+    } catch (error) {
+      showToast({
+        type: "error",
+        title: "Payment methods unavailable",
+        message: error?.response?.data?.error || error?.message || "Please try again in a moment."
+      });
+    } finally {
+      setIsLoadingProcessors(false);
+    }
+  };
+
+  const createPayment = async (processor) => {
+    try {
+      setIsCreatingPayment(true);
+      const deliveryAddress = address?.address || address?.addressLine1;
+      const payload = {
+        useCart: true,
+        branchId: branchId || restaurant?.branchId || restaurant?.activeBranchId || restaurant?.defaultBranchId || restaurant?.branches?.[0]?.id,
+        deliveryAddress,
+        procId: processor?.procId || ""
+      };
+
+      const data = await createDragonpayPayment(payload);
+      const redirectUrl = data?.payment?.redirectUrl;
+
+      if (!redirectUrl) {
+        throw new Error("Payment redirect URL missing.");
+      }
+
+      setPaymentSheetVisible(false);
+      await Linking.openURL(redirectUrl);
+      loadOrders().catch(() => null);
+      showToast({
+        type: "success",
+        title: "Payment opened",
+        message: "Complete the payment in Dragonpay. Your order will appear after confirmation."
+      });
+    } catch (error) {
+      showToast({
+        type: "error",
+        title: "Payment failed",
+        message: error?.response?.data?.error || error?.message || "Unable to start payment."
+      });
+    } finally {
+      setIsCreatingPayment(false);
+    }
   };
 
   if (!items.length) {
@@ -400,7 +577,7 @@ export default function CartScreen({ navigation }) {
                 <Text className="mt-1 text-sm font-semibold text-primary">See summary</Text>
               </View>
               <View className="items-end">
-                <Text className="text-xl font-bold text-primary">{currencyLabel(quote?.labels?.total, subtotal)}</Text>
+                <Text className="text-xl font-bold text-primary">{totalLabel}</Text>
                 <Text className="mt-1 text-sm text-muted line-through">{money(subtotal * 1.2)}</Text>
               </View>
             </View>
@@ -411,17 +588,20 @@ export default function CartScreen({ navigation }) {
       <View className="absolute bottom-0 left-0 right-0 border-t border-border bg-white px-5 pb-6 pt-4 shadow-lg">
         <Button
           title="Confirm payment and address"
-          loading={isQuoting}
-          onPress={() =>
-            showToast({
-              type: "info",
-              title: "Checkout coming next",
-              message: "Payment and address confirmation will be connected in the checkout phase."
-            })
-          }
+          loading={isQuoting || isLoadingProcessors}
+          onPress={openCheckout}
           className="rounded-xl"
         />
       </View>
+      <PaymentMethodSheet
+        amountLabel={totalLabel}
+        isLoading={isLoadingProcessors}
+        isSubmitting={isCreatingPayment}
+        processors={paymentProcessors}
+        visible={paymentSheetVisible}
+        onClose={() => setPaymentSheetVisible(false)}
+        onSelect={createPayment}
+      />
     </SafeAreaView>
   );
 }
