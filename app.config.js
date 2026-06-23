@@ -1,4 +1,5 @@
 const googleMapsApiKey = process.env.EXPO_PUBLIC_GOOGLE_MAPS_API_KEY || "";
+const firebaseProjectId = process.env.EXPO_PUBLIC_FIREBASE_PROJECT_ID || "dart-app-eaa91";
 
 module.exports = {
   expo: {
@@ -26,7 +27,8 @@ module.exports = {
       }
     },
     android: {
-      package: "com.azhar.fooddelivery",
+      package: "com.twowaydigitalmedia.dart",
+      googleServicesFile: "./google-services.json",
       adaptiveIcon: {
         foregroundImage: "./assets/logo.png",
         backgroundColor: "#FF6400"
@@ -36,10 +38,12 @@ module.exports = {
           apiKey: googleMapsApiKey
         }
       },
-      permissions: ["ACCESS_FINE_LOCATION", "ACCESS_COARSE_LOCATION"],
+      permissions: ["ACCESS_FINE_LOCATION", "ACCESS_COARSE_LOCATION", "POST_NOTIFICATIONS"],
       edgeToEdgeEnabled: true
     },
     plugins: [
+      "@react-native-firebase/app",
+      "@react-native-firebase/messaging",
       "expo-secure-store",
       [
         "expo-font",
@@ -53,6 +57,11 @@ module.exports = {
           ]
         }
       ]
-    ]
+    ],
+    extra: {
+      firebase: {
+        projectId: firebaseProjectId
+      }
+    }
   }
 };

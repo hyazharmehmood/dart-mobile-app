@@ -1,0 +1,46 @@
+meta {
+  name: update-notification-preferences
+  type: http
+  seq: 5
+}
+
+patch {
+  url: {{baseUrl}}/api/mobile/notification-preferences
+  body: json
+  auth: none
+}
+
+headers {
+  Authorization: Bearer {{customerAccessToken}}
+  Content-Type: application/json
+}
+
+body:json {
+  {
+    "pushEnabled": true,
+    "ordersEnabled": true,
+    "deliveryEnabled": true,
+    "paymentsEnabled": true,
+    "accountEnabled": true
+  }
+}
+
+docs {
+  Updates one or more push preference toggles. Send only the fields you want to change.
+
+  Example body to disable payment pushes:
+  {
+    "paymentsEnabled": false
+  }
+
+  Success response:
+  {
+    "preferences": {
+      "pushEnabled": true,
+      "ordersEnabled": true,
+      "deliveryEnabled": true,
+      "paymentsEnabled": false,
+      "accountEnabled": true
+    }
+  }
+}

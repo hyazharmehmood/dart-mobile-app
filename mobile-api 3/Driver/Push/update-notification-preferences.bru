@@ -1,0 +1,30 @@
+meta {
+  name: update-notification-preferences
+  type: http
+  seq: 3
+}
+
+patch {
+  url: {{baseUrl}}/api/mobile/notification-preferences
+  body: json
+  auth: none
+}
+
+headers {
+  Authorization: Bearer {{driverAccessToken}}
+  Content-Type: application/json
+}
+
+body:json {
+  {
+    "pushEnabled": true,
+    "ordersEnabled": true,
+    "deliveryEnabled": true,
+    "paymentsEnabled": false,
+    "accountEnabled": true
+  }
+}
+
+docs {
+  Driver push preference toggles. Send only fields to change. See docs/mobile-push-notifications.md.
+}

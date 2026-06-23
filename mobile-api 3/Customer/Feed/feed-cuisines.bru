@@ -11,5 +11,21 @@ get {
 }
 
 docs {
-  Returns active cuisines with restaurant counts based on restaurants that can deliver to the provided coordinates.
+  Returns all active cuisines managed by Admin > Cuisines, in sort order. The imageUrl is the admin-managed cuisine image. restaurantCount is calculated from approved restaurants that can deliver to the optional coordinates and may be 0.
+
+  Response shape:
+  {
+    "cuisines": [{
+      "id": "cuisine_id",
+      "name": "Pizza",
+      "label": "Pizza",
+      "slug": "pizza",
+      "imageUrl": "https://...",
+      "restaurantCount": 2,
+      "sortOrder": 0
+    }],
+    "meta": { "locationApplied": true }
+  }
+
+  Selecting a cuisine uses its slug with GET /api/customer/restaurants?cuisine=pizza.
 }

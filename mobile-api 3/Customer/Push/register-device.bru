@@ -1,0 +1,30 @@
+meta {
+  name: register-device
+  type: http
+  seq: 1
+}
+
+post {
+  url: {{baseUrl}}/api/mobile/devices
+  body: json
+  auth: none
+}
+
+headers {
+  Authorization: Bearer {{customerAccessToken}}
+  Content-Type: application/json
+}
+
+body:json {
+  {
+    "token": "{{fcmToken}}",
+    "platform": "ANDROID",
+    "deviceName": "Pixel 9",
+    "appVersion": "1.0.0"
+  }
+}
+
+docs {
+  Customer app: register the Firebase token after login, signup, token refresh, or reinstall.
+  Save device.id for logout unregister. See docs/mobile-push-notifications.md.
+}

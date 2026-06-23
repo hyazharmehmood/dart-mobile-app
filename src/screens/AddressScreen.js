@@ -70,6 +70,7 @@ export default function AddressScreen({ navigation, route }) {
   const [selectedAddress, setSelectedAddress] = useState(hasSavedAddress ? initialAddressText : "");
   const [selectedAddressDetails, setSelectedAddressDetails] = useState(hasSavedAddress ? currentAddress : null);
   const [suggestions, setSuggestions] = useState([]);
+  const [hasSearchedAddress, setHasSearchedAddress] = useState(false);
   const [isInputFocused, setIsInputFocused] = useState(false);
   const [isSearching, setIsSearching] = useState(false);
   const [isResolvingMap, setIsResolvingMap] = useState(false);
@@ -156,16 +157,22 @@ export default function AddressScreen({ navigation, route }) {
   useEffect(() => {
     if (!showResults || hasSelection) {
       setSuggestions([]);
+      setHasSearchedAddress(false);
+      setIsSearching(false);
       return;
     }
 
+    setIsSearching(true);
+    setHasSearchedAddress(false);
+
     const timer = setTimeout(async () => {
       try {
-        setIsSearching(true);
         const results = await searchPlaces(address);
         setSuggestions(results);
+        setHasSearchedAddress(true);
       } catch (error) {
         setSuggestions([]);
+        setHasSearchedAddress(true);
         showToast({
           type: "error",
           title: "Address search failed",
@@ -248,6 +255,7 @@ export default function AddressScreen({ navigation, route }) {
     setSelectedAddress("");
     setSelectedAddressDetails(null);
     setSuggestions([]);
+    setHasSearchedAddress(false);
   };
 
   const saveMapLocation = async (coordinate, fallbackLabel = "") => {
@@ -272,6 +280,7 @@ export default function AddressScreen({ navigation, route }) {
       setSelectedAddress(deliveryAddress.address || deliveryAddress.addressLine1);
       setSelectedAddressDetails(deliveryAddress);
       setSuggestions([]);
+      setHasSearchedAddress(false);
       saveAddress(deliveryAddress);
     } catch (error) {
       const fallbackAddress = coordinateFallbackAddress(coordinate);
@@ -285,6 +294,8 @@ export default function AddressScreen({ navigation, route }) {
       setAddress(fallbackLabelAddress.address);
       setSelectedAddress(fallbackLabelAddress.address);
       setSelectedAddressDetails(fallbackLabelAddress);
+      setSuggestions([]);
+      setHasSearchedAddress(false);
       saveAddress(fallbackLabelAddress);
     } finally {
       setIsResolvingMap(false);
@@ -311,6 +322,8 @@ export default function AddressScreen({ navigation, route }) {
   const editSelectedAddress = () => {
     setSelectedAddress("");
     setSelectedAddressDetails(null);
+    setSuggestions([]);
+    setHasSearchedAddress(false);
     setIsInputFocused(true);
     requestAnimationFrame(() => {
       addressInputRef.current?.focus();
@@ -329,6 +342,7 @@ export default function AddressScreen({ navigation, route }) {
       setSelectedAddress(deliveryAddress.address || prediction.description);
       setSelectedAddressDetails(deliveryAddress);
       setSuggestions([]);
+      setHasSearchedAddress(false);
       setRegion((currentRegion) => ({
         ...currentRegion,
         latitude: deliveryAddress.latitude,
@@ -350,6 +364,8 @@ export default function AddressScreen({ navigation, route }) {
         longitude: region.longitude
       };
       setSelectedAddressDetails(fallbackAddress);
+      setSuggestions([]);
+      setHasSearchedAddress(false);
       saveAddress(fallbackAddress);
       showToast({
         type: "error",
@@ -382,6 +398,7 @@ export default function AddressScreen({ navigation, route }) {
                   value={address}
                   suggestions={suggestions}
                   isFocused={isInputFocused}
+                  hasSearched={hasSearchedAddress}
                   isSearching={isSearching}
                   isResolvingLocation={isResolvingMap}
                   maxResultsHeight={suggestionListMaxHeight}
@@ -389,6 +406,7 @@ export default function AddressScreen({ navigation, route }) {
                     setAddress(value);
                     setSelectedAddress("");
                     setSelectedAddressDetails(null);
+                    setHasSearchedAddress(false);
                   }}
                   onClear={clearSearch}
                   onFocus={() => setIsInputFocused(true)}

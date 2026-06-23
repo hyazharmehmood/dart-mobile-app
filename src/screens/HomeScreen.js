@@ -1,7 +1,9 @@
 import { useEffect, useRef, useState } from "react";
 import Ionicons from "@expo/vector-icons/Ionicons";
 import {
+  BackHandler,
   Image,
+  Modal,
   Pressable,
   RefreshControl,
   ScrollView,
@@ -10,7 +12,7 @@ import {
   TextInput,
   View
 } from "react-native";
-import { SafeAreaView } from "react-native-safe-area-context";
+import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
 
 import Button from "../components/ui/Button";
 import useAddressStore from "../store/useAddressStore";
@@ -202,6 +204,108 @@ function BottomNav({ activeTab, onTabPress }) {
   );
 }
 
+function HomeNotificationSheet({ notifications, unreadCount, visible, onClose, onOpenAll, onOpenNotification, onReadAll }) {
+  const latest = notifications.slice(0, 5);
+  const insets = useSafeAreaInsets();
+  const bottomPadding = Math.max(insets.bottom, 14);
+
+  return (
+    <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
+      <View className="flex-1 justify-end bg-black/35">
+        <Pressable className="flex-1" onPress={onClose} />
+        <View
+          className="max-h-[78%] w-full overflow-hidden rounded-t-[30px] bg-white pt-4"
+          style={{ paddingBottom: bottomPadding }}
+        >
+          <View className="mb-4 items-center">
+            <View className="h-1.5 w-12 rounded-full bg-[#E5E7EB]" />
+          </View>
+          <View className="mb-4 flex-row items-center justify-between px-5">
+            <View className="min-w-0 flex-1 pr-3">
+              <Text className="text-xl font-extrabold text-ink">Notifications</Text>
+              <Text className="mt-1 text-sm font-medium text-muted">{unreadCount} unread updates</Text>
+            </View>
+            <Pressable onPress={onClose} className="h-10 w-10 items-center justify-center rounded-full bg-[#F6F7F8]">
+              <Ionicons name="close" size={22} color="#1F2933" />
+            </Pressable>
+          </View>
+
+          <ScrollView
+            className="w-full flex-1"
+            contentContainerStyle={{ paddingHorizontal: 20, paddingBottom: 12 }}
+            showsVerticalScrollIndicator={false}
+            showsHorizontalScrollIndicator={false}
+            alwaysBounceHorizontal={false}
+            bounces={false}
+          >
+            <View className="mb-4 w-full flex-row items-center rounded-[22px] bg-primary px-4 py-4">
+              <View className="mr-3 h-11 w-11 items-center justify-center rounded-full bg-white">
+                <Ionicons name="notifications-outline" size={22} color="#FF6400" />
+              </View>
+              <View className="min-w-0 flex-1">
+                <Text className="text-base font-extrabold text-white" numberOfLines={1}>
+                  Dart inbox
+                </Text>
+                <Text className="mt-0.5 text-xs font-medium text-white/85" numberOfLines={2}>
+                  Orders, offers and payment updates
+                </Text>
+              </View>
+            </View>
+
+            {latest.length ? (
+              latest.map((notification) => {
+                const unread = !notification.readAt;
+
+                return (
+                  <Pressable
+                    key={notification.id}
+                    onPress={() => onOpenNotification(notification)}
+                    className={`mb-3 w-full flex-row rounded-[22px] border px-4 py-4 active:opacity-85 ${
+                      unread ? "border-[#FFD8C5] bg-[#FFF5EF]" : "border-[#EEF0F2] bg-white"
+                    }`}
+                  >
+                    <View className={`mr-3 h-11 w-11 items-center justify-center rounded-full ${unread ? "bg-primary" : "bg-[#FFF4ED]"}`}>
+                      <Ionicons name="notifications-outline" size={20} color={unread ? "#FFFFFF" : "#6B7280"} />
+                    </View>
+                    <View className="min-w-0 flex-1">
+                      <View className="flex-row items-start">
+                        <Text className="flex-1 pr-2 text-sm font-extrabold text-ink" numberOfLines={2}>
+                          {notification.title || "Notification"}
+                        </Text>
+                        {unread ? <View className="mt-1 h-2.5 w-2.5 rounded-full bg-primary" /> : null}
+                      </View>
+                      <Text className="mt-1 text-xs leading-5 text-muted" numberOfLines={2}>
+                        {notification.message || "You have a new update."}
+                      </Text>
+                    </View>
+                  </Pressable>
+                );
+              })
+            ) : (
+              <View className="items-center py-10">
+                <View className="h-16 w-16 items-center justify-center rounded-full bg-[#FFF0E5]">
+                  <Ionicons name="notifications-off-outline" size={28} color="#FF6400" />
+                </View>
+                <Text className="mt-4 text-center text-base font-extrabold text-ink">No notifications yet</Text>
+                <Text className="mt-1 text-center text-sm text-muted">Order updates will appear here.</Text>
+              </View>
+            )}
+          </ScrollView>
+
+          <View className="flex-row border-t border-[#F1F2F4] bg-white px-5 pt-4">
+            <Pressable onPress={onOpenAll} className="mr-2 h-14 flex-1 items-center justify-center rounded-2xl bg-primary px-4">
+              <Text className="text-sm font-extrabold text-white">View all</Text>
+            </Pressable>
+            <Pressable onPress={onReadAll} className="ml-2 h-14 flex-1 items-center justify-center rounded-2xl border border-border bg-white px-4">
+              <Text className="text-sm font-extrabold text-ink">Read all</Text>
+            </Pressable>
+          </View>
+        </View>
+      </View>
+    </Modal>
+  );
+}
+
 function AccountRow({ icon, iconColor = "#6B7280", title, badge, onPress }) {
   return (
     <Pressable onPress={onPress} className="flex-row items-center border-b border-border py-5 active:opacity-80">
@@ -331,8 +435,10 @@ function FeedView({
   refreshFeed,
   searchInputRef,
   searchQuery,
+  unreadCount,
   onSearchChange,
   onLocationPress,
+  onNotificationsPress,
   onRestaurantPress
 }) {
   const isSearchMode = searchQuery.trim().length > 0;
@@ -349,8 +455,13 @@ function FeedView({
               {locationLabel}
             </Text>
           </Pressable>
-          <Pressable className="h-10 w-10 items-center justify-center rounded-full">
-            <Ionicons name="heart-outline" size={29} color="#FFFFFF" />
+          <Pressable onPress={onNotificationsPress} className="h-10 w-10 items-center justify-center rounded-full">
+            <Ionicons name="notifications-outline" size={27} color="#FFFFFF" />
+            {unreadCount ? (
+              <View className="absolute right-0 top-0 min-w-[18px] items-center rounded-full bg-primary px-1">
+                <Text className="text-[10px] font-extrabold text-white">{unreadCount > 9 ? "9+" : unreadCount}</Text>
+              </View>
+            ) : null}
           </Pressable>
         </View>
         <Pressable
@@ -473,12 +584,17 @@ function FeedView({
 export default function HomeScreen({ navigation }) {
   const [activeTab, setActiveTab] = useState("food");
   const [searchQuery, setSearchQuery] = useState("");
+  const [notificationsVisible, setNotificationsVisible] = useState(false);
   const searchInputRef = useRef(null);
   const user = useAuthStore((state) => state.user);
   const profile = useAuthStore((state) => state.profile);
   const isGuest = useAuthStore((state) => state.isGuest);
   const logout = useAuthStore((state) => state.logout);
+  const notifications = useNotificationStore((state) => state.notifications);
   const unreadCount = useNotificationStore((state) => state.unreadCount);
+  const loadNotifications = useNotificationStore((state) => state.loadNotifications);
+  const markNotificationRead = useNotificationStore((state) => state.markRead);
+  const markAllNotificationsRead = useNotificationStore((state) => state.markAllRead);
   const address = useAddressStore((state) => state.address);
   const cuisines = useFeedStore((state) => state.cuisines);
   const topBrands = useFeedStore((state) => state.topBrands);
@@ -509,6 +625,64 @@ export default function HomeScreen({ navigation }) {
       force: true
     });
   };
+
+  const openNotificationsSheet = () => {
+    if (!user || isGuest) {
+      navigation.navigate("Login");
+      return;
+    }
+
+    setNotificationsVisible(true);
+    loadNotifications({ limit: 20 }).catch(() => null);
+  };
+
+  const openAllNotifications = () => {
+    setNotificationsVisible(false);
+    navigation.navigate("Notifications");
+  };
+
+  const openNotification = (notification) => {
+    if (!notification) {
+      return;
+    }
+
+    if (!notification.readAt) {
+      markNotificationRead(notification.id).catch(() => null);
+    }
+
+    setNotificationsVisible(false);
+
+    if (notification.orderId) {
+      navigation.navigate("OrderDetail", { orderId: notification.orderId });
+      return;
+    }
+
+    navigation.navigate("Notifications");
+  };
+
+  const readAllNotifications = () => {
+    markAllNotificationsRead().catch(() => null);
+  };
+
+  useEffect(() => {
+    const subscription = BackHandler.addEventListener("hardwareBackPress", () => {
+      if (notificationsVisible) {
+        setNotificationsVisible(false);
+        return true;
+      }
+
+      if (activeTab !== "food") {
+        setActiveTab("food");
+        setSearchQuery("");
+        searchInputRef.current?.blur?.();
+        return true;
+      }
+
+      return false;
+    });
+
+    return () => subscription.remove();
+  }, [activeTab, notificationsVisible]);
 
   useEffect(() => {
     const timer = setTimeout(() => {
@@ -572,13 +746,25 @@ export default function HomeScreen({ navigation }) {
               refreshFeed={refreshFeed}
               searchInputRef={searchInputRef}
               searchQuery={searchQuery}
+              unreadCount={unreadCount}
               onSearchChange={setSearchQuery}
               onLocationPress={() => navigation.navigate("Address", { returnToHome: true })}
+              onNotificationsPress={openNotificationsSheet}
               onRestaurantPress={openRestaurant}
             />
           </View>
         </SafeAreaView>
       )}
+
+      <HomeNotificationSheet
+        notifications={notifications}
+        unreadCount={unreadCount}
+        visible={notificationsVisible}
+        onClose={() => setNotificationsVisible(false)}
+        onOpenAll={openAllNotifications}
+        onOpenNotification={openNotification}
+        onReadAll={readAllNotifications}
+      />
 
       <BottomNav activeTab={activeTab} onTabPress={handleTabPress} />
     </View>

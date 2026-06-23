@@ -1,6 +1,7 @@
 import { useMemo, useRef, useState } from "react";
 import Ionicons from "@expo/vector-icons/Ionicons";
-import { ActivityIndicator, Image, Linking, Modal, Pressable, ScrollView, StatusBar, Text, View } from "react-native";
+import { LinearGradient } from "expo-linear-gradient";
+import { ActivityIndicator, Image, Modal, Pressable, ScrollView, StatusBar, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
 import Button from "../components/ui/Button";
@@ -79,6 +80,49 @@ function CartStepper() {
         <Step number="3" label="Checkout" />
       </View>
     </View>
+  );
+}
+
+function CheckoutGradientButton({ disabled, itemCount, loading, onPress, totalLabel }) {
+  return (
+    <Pressable
+      disabled={disabled || loading}
+      onPress={onPress}
+      className={`overflow-hidden rounded-2xl shadow-lg ${disabled || loading ? "opacity-70" : ""}`}
+    >
+      <LinearGradient
+        colors={["#FF7A1A", "#FF6400", "#EF4B00"]}
+        start={{ x: 0, y: 0 }}
+        end={{ x: 1, y: 1 }}
+        style={{
+          minHeight: 68,
+          flexDirection: "row",
+          alignItems: "center",
+          paddingHorizontal: 16,
+          paddingVertical: 12
+        }}
+      >
+        <View className="mr-3 h-10 w-10 items-center justify-center rounded-full bg-white/20">
+          {loading ? (
+            <ActivityIndicator color="#FFFFFF" size="small" />
+          ) : (
+            <Text className="text-base font-extrabold text-white">{itemCount}</Text>
+          )}
+        </View>
+        <View className="flex-1">
+          <Text className="text-base font-extrabold text-white">
+            {loading ? "Preparing payment..." : "Confirm payment and address"}
+          </Text>
+          <Text className="mt-0.5 text-xs font-semibold text-white/85" numberOfLines={1}>
+            Secure Dragonpay checkout inside Dart
+          </Text>
+        </View>
+        <View className="items-end">
+          <Text className="text-lg font-extrabold text-white">{totalLabel}</Text>
+          <Ionicons name="chevron-forward" size={18} color="#FFFFFF" />
+        </View>
+      </LinearGradient>
+    </Pressable>
   );
 }
 
@@ -278,6 +322,7 @@ export default function CartScreen({ navigation }) {
   const loadOrders = useOrderStore((state) => state.loadOrders);
 
   const subtotal = useMemo(() => localSubtotal(items), [items]);
+  const itemCount = useMemo(() => items.reduce((sum, item) => sum + item.quantity, 0), [items]);
   const totalAmount = numericMoney(quote?.total ?? quote?.totals?.total ?? quote?.labels?.total, subtotal);
   const totalLabel = currencyLabel(quote?.labels?.total, subtotal);
   const quoteItems = quote?.items || [];
@@ -412,12 +457,15 @@ export default function CartScreen({ navigation }) {
       }
 
       setPaymentSheetVisible(false);
-      await Linking.openURL(redirectUrl);
+      navigation.navigate("PaymentWebView", {
+        url: redirectUrl,
+        title: processorName(processor)
+      });
       loadOrders().catch(() => null);
       showToast({
         type: "success",
-        title: "Payment opened",
-        message: "Complete the payment in Dragonpay. Your order will appear after confirmation."
+        title: "Payment ready",
+        message: "Complete the Dragonpay payment inside Dart."
       });
     } catch (error) {
       showToast({
@@ -585,12 +633,22 @@ export default function CartScreen({ navigation }) {
         </View>
       </ScrollView>
 
-      <View className="absolute bottom-0 left-0 right-0 border-t border-border bg-white px-5 pb-6 pt-4 shadow-lg">
-        <Button
-          title="Confirm payment and address"
+      <View className="absolute bottom-0 left-0 right-0 border-t border-[#F1F1F1] bg-white px-5 pb-6 pt-4 shadow-lg">
+        <View className="mb-3 flex-row items-center justify-between">
+          <View>
+            <Text className="text-xs font-semibold uppercase tracking-[0.5px] text-muted">Cart total</Text>
+            <Text className="mt-0.5 text-xl font-extrabold text-ink">{totalLabel}</Text>
+          </View>
+          <View className="rounded-full bg-[#FFF0E5] px-3 py-1.5">
+            <Text className="text-xs font-extrabold text-primary">{itemCount} item{itemCount === 1 ? "" : "s"}</Text>
+          </View>
+        </View>
+        <CheckoutGradientButton
+          disabled={isQuoting || isLoadingProcessors}
+          itemCount={itemCount}
           loading={isQuoting || isLoadingProcessors}
           onPress={openCheckout}
-          className="rounded-xl"
+          totalLabel={totalLabel}
         />
       </View>
       <PaymentMethodSheet

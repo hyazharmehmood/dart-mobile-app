@@ -3,6 +3,7 @@ import Ionicons from "@expo/vector-icons/Ionicons";
 import {
   ActivityIndicator,
   Image,
+  Keyboard,
   Modal,
   Pressable,
   ScrollView,
@@ -215,8 +216,54 @@ function StickyMenuHeader({
   );
 }
 
-function MenuSearchOverlay({ onClose, onSearchChange, searchQuery, visible }) {
+function MenuSearchResultRow({ item, isAdding, onAdd }) {
+  const imageUrl = getItemImage(item);
+  const description = item.description || item.shortDescription || "";
+
+  return (
+    <Pressable onPress={() => onAdd(item)} disabled={isAdding} className="flex-row border-b border-[#ECECEC] py-4 active:opacity-80">
+      <View className="flex-1 pr-4">
+        <Text className="text-lg font-extrabold leading-6 text-ink" numberOfLines={2}>
+          {item.name}
+        </Text>
+        {description ? (
+          <Text className="mt-1 text-base leading-5 text-muted" numberOfLines={2}>
+            {description}
+          </Text>
+        ) : null}
+        <Text className="mt-3 text-base font-semibold text-ink">
+          from {money(item.price || item.basePrice)}
+        </Text>
+      </View>
+
+      <View className="h-24 w-28 items-end justify-center">
+        {imageUrl ? (
+          <Image source={{ uri: imageUrl }} className="h-20 w-24 rounded-2xl" resizeMode="cover" />
+        ) : (
+          <View className="h-20 w-24 items-center justify-center rounded-2xl bg-[#F2F3F4]">
+            <Ionicons name="fast-food-outline" size={24} color="#9CA3AF" />
+          </View>
+        )}
+        <Pressable
+          disabled={isAdding}
+          onPress={() => onAdd(item)}
+          className="absolute bottom-0 right-0 h-11 w-11 items-center justify-center rounded-full bg-white shadow-md"
+        >
+          {isAdding ? (
+            <ActivityIndicator size="small" color="#FF6400" />
+          ) : (
+            <Ionicons name="add" size={28} color="#1F2933" />
+          )}
+        </Pressable>
+      </View>
+    </Pressable>
+  );
+}
+
+function MenuSearchOverlay({ isAddingId, onAdd, onClose, onSearchChange, results, searchQuery, visible }) {
   const inputRef = useRef(null);
+  const insets = useSafeAreaInsets();
+  const hasQuery = searchQuery.trim().length > 0;
 
   useEffect(() => {
     if (!visible) {
@@ -232,11 +279,18 @@ function MenuSearchOverlay({ onClose, onSearchChange, searchQuery, visible }) {
 
   return (
     <Modal visible={visible} transparent animationType="fade" onRequestClose={onClose}>
-      <View className="flex-1 bg-black/55">
-        <SafeAreaView className="bg-white px-5 pb-6 " style={{ borderBottomLeftRadius: 18, borderBottomRightRadius: 18 }}>
-          <StatusBar barStyle="dark-content" backgroundColor="#FFFFFF" />
+      <StatusBar barStyle="dark-content" backgroundColor="#FFFFFF" translucent />
+      <View className={`flex-1 ${hasQuery ? "bg-white" : "bg-black/55"}`}>
+        <View
+          className={`bg-white px-5 ${hasQuery ? "pb-4" : "pb-6"}`}
+          style={{
+            paddingTop: insets.top + 10,
+            borderBottomLeftRadius: hasQuery ? 0 : 18,
+            borderBottomRightRadius: hasQuery ? 0 : 18
+          }}
+        >
           <View className="flex-row items-center">
-            <Pressable onPress={onClose} className="mr-3 h-11 w-11 items-center justify-center rounded-full bg-white">
+            <Pressable onPress={onClose} className="mr-3  h-11 w-11 items-center justify-center rounded-full bg-white">
               <Ionicons name="arrow-back" size={26} color="#FF6400" />
             </Pressable>
             <View className="h-12 flex-1 flex-row items-center rounded-2xl bg-[#F6F7F8] px-4">
@@ -248,6 +302,7 @@ function MenuSearchOverlay({ onClose, onSearchChange, searchQuery, visible }) {
                 placeholderTextColor="#8A8F98"
                 returnKeyType="search"
                 autoCorrect={false}
+                onSubmitEditing={() => Keyboard.dismiss()}
                 className="flex-1 text-lg font-medium text-ink"
               />
               {searchQuery ? (
@@ -257,9 +312,39 @@ function MenuSearchOverlay({ onClose, onSearchChange, searchQuery, visible }) {
               ) : null}
             </View>
           </View>
-        </SafeAreaView>
+        </View>
 
-        <Pressable className="flex-1" onPress={onClose} />
+        {hasQuery ? (
+          <ScrollView
+            className="flex-1 bg-white px-5"
+            contentContainerStyle={{ paddingBottom: 32 }}
+            keyboardShouldPersistTaps="handled"
+            showsVerticalScrollIndicator={false}
+          >
+            {results.length ? (
+              results.map((item) => (
+                <MenuSearchResultRow
+                  key={item.id}
+                  item={item}
+                  isAdding={isAddingId === item.id}
+                  onAdd={onAdd}
+                />
+              ))
+            ) : (
+              <View className="mt-20 items-center">
+                <View className="h-16 w-16 items-center justify-center rounded-full bg-[#FFF0E5]">
+                  <Ionicons name="search-outline" size={28} color="#FF6400" />
+                </View>
+                <Text className="mt-4 text-lg font-extrabold text-ink">No menu items found</Text>
+                <Text className="mt-1 text-center text-sm leading-5 text-muted">
+                  Try another dish, category, or flavor name.
+                </Text>
+              </View>
+            )}
+          </ScrollView>
+        ) : (
+          <Pressable className="flex-1" onPress={onClose} />
+        )}
       </View>
     </Modal>
   );
@@ -1068,7 +1153,15 @@ export default function RestaurantDetailScreen({ navigation, route }) {
       />
       <MenuSearchOverlay
         visible={isSearchOpen}
+        results={allItems}
         searchQuery={menuSearchQuery}
+        isAddingId={addingItemId}
+        onAdd={(item) => {
+          if (hasModifiers(item)) {
+            setIsSearchOpen(false);
+          }
+          handleAddPress(item);
+        }}
         onSearchChange={setMenuSearchQuery}
         onClose={() => setIsSearchOpen(false)}
       />

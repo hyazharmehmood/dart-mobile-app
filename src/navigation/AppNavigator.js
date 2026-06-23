@@ -1,9 +1,15 @@
-import { NavigationContainer } from "@react-navigation/native";
+import { NavigationContainer, createNavigationContainerRef } from "@react-navigation/native";
 import { createNativeStackNavigator } from "@react-navigation/native-stack";
-import { useEffect } from "react";
+import { useCallback, useEffect } from "react";
 import { ActivityIndicator, View } from "react-native";
 
 import { setUnauthorizedHandler } from "../services/api";
+import {
+  addFirebaseMessageListener,
+  addFirebaseTokenRefreshListener,
+  addNotificationResponseListener,
+  registerAuthenticatedPushDevice
+} from "../services/pushNotificationService";
 import { connectCustomerSocket, disconnectCustomerSocket } from "../services/socketService";
 import HomeScreen from "../screens/HomeScreen";
 import AddressScreen from "../screens/AddressScreen";
@@ -12,7 +18,9 @@ import LocationAccessScreen from "../screens/LocationAccessScreen";
 import LocationEnableScreen from "../screens/LocationEnableScreen";
 import LoginScreen from "../screens/LoginScreen";
 import NotificationsScreen from "../screens/NotificationsScreen";
+import OrderDetailScreen from "../screens/OrderDetailScreen";
 import OrdersScreen from "../screens/OrdersScreen";
+import PaymentWebViewScreen from "../screens/PaymentWebViewScreen";
 import RestaurantDetailScreen from "../screens/RestaurantDetailScreen";
 import SignupScreen from "../screens/SignupScreen";
 import SplashScreen from "../screens/SplashScreen";
@@ -23,6 +31,29 @@ import useNotificationStore from "../store/useNotificationStore";
 import useOrderStore from "../store/useOrderStore";
 
 const Stack = createNativeStackNavigator();
+export const navigationRef = createNavigationContainerRef();
+
+function openNotificationTarget(data = {}) {
+  if (!navigationRef.isReady()) {
+    return;
+  }
+
+  const routeOrderId = String(data.route || "").match(/\/customer\/orders\/([^/?#]+)/)?.[1];
+  const orderId = data.orderId || routeOrderId;
+
+  if (orderId) {
+    navigationRef.navigate("OrderDetail", { orderId });
+    if (data.notificationId) {
+      useNotificationStore.getState().markRead(data.notificationId).catch(() => null);
+    }
+    return;
+  }
+
+  navigationRef.navigate("Notifications");
+  if (data.notificationId) {
+    useNotificationStore.getState().markRead(data.notificationId).catch(() => null);
+  }
+}
 
 export default function AppNavigator() {
   const user = useAuthStore((state) => state.user);
@@ -45,6 +76,13 @@ export default function AppNavigator() {
   const receiveOrderEvent = useOrderStore((state) => state.receiveOrderEvent);
   const receiveOrderUpdated = useOrderStore((state) => state.receiveOrderUpdated);
   const resetOrders = useOrderStore((state) => state.resetOrders);
+
+  const handleNotificationNew = useCallback(
+    (notification) => {
+      receiveNotification(notification);
+    },
+    [receiveNotification]
+  );
 
   useEffect(() => {
     setUnauthorizedHandler(() => {
@@ -87,6 +125,7 @@ export default function AppNavigator() {
       hydrateServerCart().catch(() => {});
       loadNotifications({ limit: 20 }).catch(() => {});
       loadOrders({ limit: 10 }).catch(() => {});
+      registerAuthenticatedPushDevice().catch(() => null);
       return;
     }
 
@@ -99,7 +138,7 @@ export default function AppNavigator() {
     if (user && token && !isGuest) {
       connectCustomerSocket({
         token,
-        onNotificationNew: receiveNotification,
+        onNotificationNew: handleNotificationNew,
         onNotificationRead: receiveNotificationRead,
         onNotificationReadAll: receiveNotificationReadAll,
         onOrderEvent: receiveOrderEvent,
@@ -114,8 +153,8 @@ export default function AppNavigator() {
     disconnectCustomerSocket();
     return undefined;
   }, [
+    handleNotificationNew,
     isGuest,
-    receiveNotification,
     receiveNotificationRead,
     receiveNotificationReadAll,
     receiveOrderEvent,
@@ -123,6 +162,36 @@ export default function AppNavigator() {
     token,
     user
   ]);
+
+  useEffect(() => {
+    const subscription = addNotificationResponseListener((response) => {
+      openNotificationTarget(response?.notification?.request?.content?.data || {});
+    });
+
+    return () => {
+      subscription?.remove?.();
+    };
+  }, []);
+
+  useEffect(() => {
+    if (!user || isGuest) {
+      return undefined;
+    }
+
+    const unsubscribeMessage = addFirebaseMessageListener((notification) => {
+      handleNotificationNew(notification);
+      loadNotifications({ limit: 20 }).catch(() => null);
+    });
+
+    const unsubscribeToken = addFirebaseTokenRefreshListener(() => {
+      registerAuthenticatedPushDevice().catch(() => null);
+    });
+
+    return () => {
+      unsubscribeMessage?.();
+      unsubscribeToken?.();
+    };
+  }, [handleNotificationNew, isGuest, loadNotifications, user]);
 
   if (isRestoring) {
     return (
@@ -133,14 +202,16 @@ export default function AppNavigator() {
   }
 
   return (
-    <NavigationContainer>
+    <NavigationContainer ref={navigationRef}>
       <Stack.Navigator screenOptions={{ headerShown: false }}>
         {user || isGuest ? (
           <>
             <Stack.Screen name="Home" component={HomeScreen} />
             <Stack.Screen name="RestaurantDetail" component={RestaurantDetailScreen} />
             <Stack.Screen name="Cart" component={CartScreen} />
+            <Stack.Screen name="PaymentWebView" component={PaymentWebViewScreen} />
             <Stack.Screen name="Orders" component={OrdersScreen} />
+            <Stack.Screen name="OrderDetail" component={OrderDetailScreen} />
             <Stack.Screen name="Notifications" component={NotificationsScreen} />
             <Stack.Screen name="Address" component={AddressScreen} />
             <Stack.Screen name="Login" component={LoginScreen} />
@@ -155,7 +226,9 @@ export default function AppNavigator() {
             <Stack.Screen name="Home" component={HomeScreen} />
             <Stack.Screen name="RestaurantDetail" component={RestaurantDetailScreen} />
             <Stack.Screen name="Cart" component={CartScreen} />
+            <Stack.Screen name="PaymentWebView" component={PaymentWebViewScreen} />
             <Stack.Screen name="Orders" component={OrdersScreen} />
+            <Stack.Screen name="OrderDetail" component={OrderDetailScreen} />
             <Stack.Screen name="Notifications" component={NotificationsScreen} />
             <Stack.Screen name="Login" component={LoginScreen} />
             <Stack.Screen name="Signup" component={SignupScreen} />

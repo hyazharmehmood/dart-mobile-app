@@ -1,0 +1,55 @@
+meta {
+  name: register-device
+  type: http
+  seq: 1
+}
+
+post {
+  url: {{baseUrl}}/api/mobile/devices
+  body: json
+  auth: none
+}
+
+headers {
+  Authorization: Bearer {{customerAccessToken}}
+  Content-Type: application/json
+}
+
+body:json {
+  {
+    "token": "{{fcmToken}}",
+    "platform": "ANDROID",
+    "deviceName": "Pixel 9",
+    "appVersion": "1.0.0"
+  }
+}
+
+docs {
+  Registers or refreshes the Firebase Cloud Messaging (FCM) device token for the authenticated customer or driver.
+
+  Auth:
+  - Customer app: Authorization: Bearer {{customerAccessToken}}
+  - Driver app: Authorization: Bearer {{driverAccessToken}}
+
+  Call after:
+  - login / signup success
+  - Firebase onNewToken
+  - app reinstall
+  - account switch on the same device
+
+  The same FCM token is globally unique. Registering it moves ownership to the latest logged-in user.
+
+  Success response:
+  {
+    "device": {
+      "id": "device_id",
+      "platform": "android",
+      "deviceName": "Pixel 9",
+      "appVersion": "1.0.0",
+      "lastSeenAt": "2026-06-23T10:00:00.000Z",
+      "createdAt": "2026-06-23T10:00:00.000Z"
+    }
+  }
+
+  Save device.id and unregister it on logout with DELETE /api/mobile/devices/:deviceId.
+}

@@ -54,6 +54,7 @@ const GoogleAddressSearch = forwardRef(function GoogleAddressSearch(
     value,
     suggestions = [],
     isFocused,
+    hasSearched,
     isSearching,
     isResolvingLocation,
     maxResultsHeight,
@@ -71,7 +72,7 @@ const GoogleAddressSearch = forwardRef(function GoogleAddressSearch(
 ) {
   const trimmedValue = value.trim();
   const showResults = isFocused;
-  const showNoResults = showResults && trimmedValue.length > 2 && !isSearching && !suggestions.length;
+  const showNoResults = showResults && hasSearched && trimmedValue.length > 2 && !isSearching && !suggestions.length;
 
   return (
     <View>

@@ -1,0 +1,19 @@
+meta {
+  name: unregister-device
+  type: http
+  seq: 4
+}
+
+delete {
+  url: {{baseUrl}}/api/mobile/devices/{{deviceId}}
+  body: none
+  auth: none
+}
+
+headers {
+  Authorization: Bearer {{customerAccessToken}}
+}
+
+docs {
+  Customer logout: unregister the device returned from register-device. See docs/mobile-push-notifications.md.
+}

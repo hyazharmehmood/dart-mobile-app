@@ -20,9 +20,9 @@ function totalLabel(order) {
   return typeof value === "number" ? `₱${value.toFixed(2)}` : String(value).replace(/^Rs\.?\s*/i, "₱");
 }
 
-function OrderRow({ order }) {
+function OrderRow({ order, onPress }) {
   return (
-    <View className="mb-3 rounded-2xl border border-border bg-white px-4 py-4">
+    <Pressable onPress={() => onPress(order)} className="mb-3 rounded-2xl border border-border bg-white px-4 py-4 active:opacity-80">
       <View className="flex-row items-start justify-between">
         <View className="flex-1 pr-3">
           <Text className="text-base font-bold text-ink" numberOfLines={1}>
@@ -42,7 +42,7 @@ function OrderRow({ order }) {
         </Text>
         <Text className="text-base font-bold text-ink">{totalLabel(order)}</Text>
       </View>
-    </View>
+    </Pressable>
   );
 }
 
@@ -75,6 +75,10 @@ export default function OrdersScreen({ navigation }) {
     navigation.navigate("Home");
   };
 
+  const openOrder = (order) => {
+    navigation.navigate("OrderDetail", { orderId: order.id, order });
+  };
+
   return (
     <SafeAreaView className="flex-1 bg-white">
       <StatusBar barStyle="dark-content" backgroundColor="#FFFFFF" />
@@ -96,7 +100,7 @@ export default function OrdersScreen({ navigation }) {
         refreshControl={<RefreshControl refreshing={isLoading} onRefresh={refresh} />}
       >
         {orders.length ? (
-          orders.map((order) => <OrderRow key={order.id || order.orderNumber} order={order} />)
+          orders.map((order) => <OrderRow key={order.id || order.orderNumber} order={order} onPress={openOrder} />)
         ) : (
           <View className="mt-20 items-center">
             <View className="h-24 w-24 items-center justify-center rounded-full bg-[#FFF4ED]">

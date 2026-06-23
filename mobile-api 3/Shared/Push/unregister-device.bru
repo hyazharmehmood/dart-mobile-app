@@ -1,0 +1,26 @@
+meta {
+  name: unregister-device
+  type: http
+  seq: 3
+}
+
+delete {
+  url: {{baseUrl}}/api/mobile/devices/{{deviceId}}
+  body: none
+  auth: none
+}
+
+headers {
+  Authorization: Bearer {{customerAccessToken}}
+}
+
+docs {
+  Unregisters a device token on logout or when the user disables push in app settings.
+
+  Replace {{deviceId}} with the id returned from POST /api/mobile/devices.
+
+  Success response:
+  {
+    "ok": true
+  }
+}

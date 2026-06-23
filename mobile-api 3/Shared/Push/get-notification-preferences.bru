@@ -1,0 +1,33 @@
+meta {
+  name: get-notification-preferences
+  type: http
+  seq: 4
+}
+
+get {
+  url: {{baseUrl}}/api/mobile/notification-preferences
+  body: none
+  auth: none
+}
+
+headers {
+  Authorization: Bearer {{customerAccessToken}}
+}
+
+docs {
+  Returns push preference toggles for the authenticated user.
+
+  Success response:
+  {
+    "preferences": {
+      "pushEnabled": true,
+      "ordersEnabled": true,
+      "deliveryEnabled": true,
+      "paymentsEnabled": true,
+      "accountEnabled": true
+    }
+  }
+
+  Disabling pushEnabled or a category flag stops FCM delivery for that category.
+  In-app inbox and Socket.IO events are not disabled by these flags.
+}

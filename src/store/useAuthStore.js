@@ -3,6 +3,7 @@ import { create } from "zustand";
 import { getApiErrorMessage, setApiAccessToken } from "../services/api";
 import { loginCustomer, signupCustomer } from "../services/authService";
 import { getCustomerProfile } from "../services/profileService";
+import { unregisterSavedPushDevice } from "../services/pushNotificationService";
 import { clearSession, loadSession, saveSession } from "../services/sessionStorage";
 
 function isExpired(expiresAt) {
@@ -14,6 +15,26 @@ function sessionFromResponse(data) {
     user: data.user,
     auth: data.auth,
     profile: data.profile || data.user?.customerProfile || data.user || null
+  };
+}
+
+function persistedSession(session) {
+  return {
+    auth: session.auth,
+    user: {
+      id: session.user?.id,
+      name: session.user?.name,
+      email: session.user?.email,
+      phone: session.user?.phone
+    },
+    profile: {
+      id: session.profile?.id,
+      firstName: session.profile?.firstName,
+      lastName: session.profile?.lastName,
+      name: session.profile?.name,
+      email: session.profile?.email,
+      phone: session.profile?.phone
+    }
   };
 }
 
@@ -66,7 +87,7 @@ const useAuthStore = create((set, get) => ({
 
       setApiAccessToken(session.auth.accessToken);
       const freshSession = await withFreshProfile(session);
-      await saveSession(freshSession);
+      await saveSession(persistedSession(freshSession));
 
       set({
         user: freshSession.user,
@@ -94,7 +115,7 @@ const useAuthStore = create((set, get) => ({
 
       setApiAccessToken(session.auth.accessToken);
       const freshSession = await withFreshProfile(session);
-      await saveSession(freshSession);
+      await saveSession(persistedSession(freshSession));
 
       set({
         user: freshSession.user,
@@ -135,7 +156,7 @@ const useAuthStore = create((set, get) => ({
         user: userFromProfile(session.user, profile)
       };
 
-      await saveSession(restoredSession);
+      await saveSession(persistedSession(restoredSession));
 
       set({
         user: restoredSession.user,
@@ -175,6 +196,10 @@ const useAuthStore = create((set, get) => ({
       error: null
     }),
   logout: async ({ asGuest = false } = {}) => {
+    if (get().token) {
+      await unregisterSavedPushDevice().catch(() => null);
+    }
+
     setApiAccessToken(null);
     await clearSession();
     set({

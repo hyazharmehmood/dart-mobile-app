@@ -1,0 +1,35 @@
+meta {
+  name: list-devices
+  type: http
+  seq: 2
+}
+
+get {
+  url: {{baseUrl}}/api/mobile/devices
+  body: none
+  auth: none
+}
+
+headers {
+  Authorization: Bearer {{customerAccessToken}}
+}
+
+docs {
+  Lists active registered devices for the authenticated user.
+
+  Use for debugging or settings screens that show where push is enabled.
+
+  Success response:
+  {
+    "devices": [
+      {
+        "id": "device_id",
+        "platform": "android",
+        "deviceName": "Pixel 9",
+        "appVersion": "1.0.0",
+        "lastSeenAt": "2026-06-23T10:00:00.000Z",
+        "createdAt": "2026-06-23T09:00:00.000Z"
+      }
+    ]
+  }
+}

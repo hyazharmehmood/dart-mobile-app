@@ -1,0 +1,70 @@
+{
+  "project_info": {
+    "project_number": "348606094518",
+    "project_id": "dart-app-eaa91",
+    "storage_bucket": "dart-app-eaa91.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:348606094518:android:479b25a7f4a4d15d2b5a17",
+        "android_client_info": {
+          "package_name": "com.twowaydigitalmedia.dart"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "348606094518-9nng9htbchofvvc6o11el6pb2g7tgdmn.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.twowaydigitalmedia.dart",
+            "certificate_hash": "d74a5e877c15ea8bdf9e0329dc7dd8f564e84645"
+          }
+        },
+        {
+          "client_id": "348606094518-grnaen7fn1fcb5hk9cceu7moaf2s9pim.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.twowaydigitalmedia.dart",
+            "certificate_hash": "39a16d21a10fe108a2e87a859607df91dd3b00b4"
+          }
+        },
+        {
+          "client_id": "348606094518-ke78g8gr40lqk685bqsqircjcr5dqkb2.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.twowaydigitalmedia.dart",
+            "certificate_hash": "36e8a187550761e64895dce5692b899db97740b1"
+          }
+        },
+        {
+          "client_id": "348606094518-cak1u508iout8b8dctq28unt7jepterd.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDawoBHWgM0Dshr0vC0K99tMlCFXfV3KEs"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "348606094518-cak1u508iout8b8dctq28unt7jepterd.apps.googleusercontent.com",
+              "client_type": 3
+            },
+            {
+              "client_id": "348606094518-62k7sn5hqc77mc2l9bu06to20vqdi0j4.apps.googleusercontent.com",
+              "client_type": 2,
+              "ios_info": {
+                "bundle_id": "com.twowaydigitalmedia.dart"
+              }
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
