@@ -1,0 +1,21 @@
+meta {
+  name: list-payouts
+  type: http
+  seq: 1
+}
+
+get {
+  url: {{baseUrl}}/api/driver/payouts
+  body: none
+  auth: none
+}
+
+headers {
+  Authorization: Bearer {{driverAccessToken}}
+}
+
+docs {
+  Bank details & payouts screen contract. Returns payouts, payout methods, and stats.
+  availableBalance is sourced from Xendit owned-subaccount balance. auditAvailableBalance
+  is the Dart ledger estimate for support/audit only.
+}

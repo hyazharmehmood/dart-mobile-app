@@ -5,6 +5,7 @@ import { loginCustomer, signupCustomer } from "../services/authService";
 import { getCustomerProfile } from "../services/profileService";
 import { unregisterSavedPushDevice } from "../services/pushNotificationService";
 import { clearSession, loadSession, saveSession } from "../services/sessionStorage";
+import { profileImageUrl } from "../utils/profileDisplay";
 
 function isExpired(expiresAt) {
   return !expiresAt || new Date(expiresAt).getTime() <= Date.now();
@@ -19,21 +20,28 @@ function sessionFromResponse(data) {
 }
 
 function persistedSession(session) {
+  const image = profileImageUrl(session.profile, session.user);
+
   return {
     auth: session.auth,
     user: {
       id: session.user?.id,
       name: session.user?.name,
       email: session.user?.email,
-      phone: session.user?.phone
+      phone: session.user?.phone,
+      image,
+      imageUrl: image
     },
     profile: {
       id: session.profile?.id,
-      firstName: session.profile?.firstName,
-      lastName: session.profile?.lastName,
+      firstName: session.profile?.firstName || session.profile?.profile?.firstName,
+      lastName: session.profile?.lastName || session.profile?.profile?.lastName,
       name: session.profile?.name,
       email: session.profile?.email,
-      phone: session.profile?.phone
+      phone: session.profile?.phone,
+      image,
+      imageUrl: image,
+      profile: session.profile?.profile || null
     }
   };
 }
@@ -43,12 +51,16 @@ function profileFromResponse(data, fallback = null) {
 }
 
 function userFromProfile(user, profile) {
+  const image = profileImageUrl(profile, user);
+
   return {
     ...user,
     id: profile?.id || user?.id,
     name: profile?.name || user?.name,
     email: profile?.email || user?.email,
     phone: profile?.phone || user?.phone,
+    image,
+    imageUrl: image,
     customerProfile: profile?.profile || user?.customerProfile
   };
 }
@@ -179,7 +191,15 @@ const useAuthStore = create((set, get) => ({
   refreshProfile: async () => {
     const data = await getCustomerProfile();
     const profile = profileFromResponse(data, get().profile);
-    set({ profile, user: userFromProfile(get().user, profile) });
+    const user = userFromProfile(get().user, profile);
+    const session = {
+      auth: get().auth,
+      user,
+      profile
+    };
+
+    await saveSession(persistedSession(session)).catch(() => null);
+    set({ profile, user });
     return profile;
   },
   setLoading: (isLoading) => set({ isLoading }),

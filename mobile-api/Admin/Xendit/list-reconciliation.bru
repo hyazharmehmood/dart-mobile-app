@@ -1,0 +1,20 @@
+meta {
+  name: list-reconciliation
+  type: http
+  seq: 0
+}
+
+get {
+  url: {{baseUrl}}/api/admin/xendit/reconciliation
+  body: none
+  auth: none
+}
+
+headers {
+  Cookie: {{adminSessionCookie}}
+}
+
+docs {
+  Admin finance reconciliation. Compares Dart expected audit rows with Xendit
+  provider transfers and returns mismatch states.
+}

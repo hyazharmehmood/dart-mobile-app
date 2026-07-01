@@ -1,0 +1,21 @@
+meta {
+  name: get-xendit-payment-status
+  type: http
+  seq: 2
+}
+
+get {
+  url: {{baseUrl}}/api/customer/payments/xendit/session/{{paymentSessionId}}/status
+  body: none
+  auth: none
+}
+
+headers {
+  Authorization: Bearer {{customerAccessToken}}
+}
+
+docs {
+  Poll customer payment status after GCash/Maya redirect or mobile card WebView completion.
+  Treat checkout as complete only when confirmed=true (status paid and orderId present).
+  Poll every 2-3 seconds for up to 2 minutes after redirect/WebView completion.
+}

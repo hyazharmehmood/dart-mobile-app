@@ -1,0 +1,48 @@
+meta {
+  name: list-devices
+  type: http
+  seq: 4
+}
+
+get {
+  url: {{baseUrl}}/api/customer/devices
+  body: none
+  auth: none
+}
+
+headers {
+  Authorization: Bearer {{customerAccessToken}}
+}
+
+docs {
+  Returns the authenticated customer's registered push devices, including FCM tokens for testing.
+
+  Query options:
+  - includeDisabled=true to include unregistered/invalid tokens
+
+  Success response:
+  {
+    "preferences": {
+      "pushEnabled": true,
+      "ordersEnabled": true,
+      "deliveryEnabled": true,
+      "paymentsEnabled": true,
+      "accountEnabled": true
+    },
+    "devices": [
+      {
+        "id": "device_id",
+        "token": "full-fcm-registration-token",
+        "platform": "android",
+        "deviceName": "Pixel 9",
+        "appVersion": "1.0.0",
+        "lastSeenAt": "2026-06-23T10:00:00.000Z",
+        "disabledAt": null,
+        "invalidReason": null,
+        "createdAt": "2026-06-23T09:00:00.000Z",
+        "updatedAt": "2026-06-23T10:00:00.000Z"
+      }
+    ],
+    "activeCount": 1
+  }
+}

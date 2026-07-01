@@ -1,0 +1,29 @@
+meta {
+  name: set-online-availability
+  type: http
+  seq: 3
+}
+
+patch {
+  url: {{baseUrl}}/api/driver/profile
+  body: json
+  auth: none
+}
+
+headers {
+  Authorization: Bearer {{driverAccessToken}}
+  Content-Type: application/json
+}
+
+body:json {
+  {
+    "isAvailable": true
+  }
+}
+
+docs {
+  The Account and Home Online switches call this contract.
+
+  isAvailable true means the driver is eligible to receive and accept offers in their current zone.
+  The API requires approved driver status and a fresh location before going online. Send false to go offline.
+}

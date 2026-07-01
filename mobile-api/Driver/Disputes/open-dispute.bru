@@ -1,0 +1,29 @@
+meta {
+  name: open-dispute
+  type: http
+  seq: 3
+}
+
+post {
+  url: {{baseUrl}}/api/driver/orders/{{orderId}}/disputes
+  body: json
+  auth: none
+}
+
+headers {
+  Authorization: Bearer {{driverAccessToken}}
+  Content-Type: application/json
+}
+
+body:json {
+  {
+    "type": "DELIVERY_ISSUE",
+    "summary": "Customer was not available at the delivery location."
+  }
+}
+
+docs {
+  Opens a dispute on an assigned order within the 7-day dispute window.
+
+  Types: MISSING_WRONG_ITEM, FOOD_QUALITY, DELIVERY_ISSUE, PAYMENT_REFUND, OTHER
+}

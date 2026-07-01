@@ -1,0 +1,34 @@
+meta {
+  name: update-location
+  type: http
+  seq: 3
+}
+
+patch {
+  url: {{baseUrl}}/api/driver/location
+  body: json
+  auth: none
+}
+
+headers {
+  Authorization: Bearer {{driverAccessToken}}
+  Content-Type: application/json
+}
+
+body:json {
+  {
+    "latitude": 31.44269,
+    "longitude": 74.20766,
+    "recordedAt": "2026-06-24T16:30:00.000Z"
+  }
+}
+
+docs {
+  Lightweight GPS heartbeat while on duty. Call every 30–60 seconds when online and available.
+  The Location account screen can use this endpoint for an explicit manual refresh.
+
+  Updates currentLat/currentLng, lastLocationAt, lastSeenAt, and currentZoneId.
+  Re-syncs ready offers when the driver becomes dispatch-eligible (socket + push debounced to ~30s).
+
+  Prefer this endpoint over PATCH /api/driver/profile for continuous location updates.
+}

@@ -1,0 +1,25 @@
+meta {
+  name: list-order-history
+  type: http
+  seq: 6
+}
+
+get {
+  url: {{baseUrl}}/api/driver/orders/history?status=DELIVERED
+  body: none
+  auth: none
+}
+
+headers {
+  Authorization: Bearer {{driverAccessToken}}
+}
+
+docs {
+  Orders tab contract. Omit status to return all driver-owned orders, newest first.
+
+  Supported status values:
+  DRIVER_ASSIGNED, PICKED_UP, ON_THE_WAY, DELIVERED, CANCELLED, REFUNDED.
+
+  Each order includes restaurant/customer details, deliveryLocation, item images,
+  subtotal, delivery fee, tax, total, and all lifecycle timestamps for order-detail screens.
+}

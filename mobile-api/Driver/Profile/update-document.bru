@@ -1,0 +1,27 @@
+meta {
+  name: update-document
+  type: http
+  seq: 4
+}
+
+patch {
+  url: {{baseUrl}}/api/driver/documents/{{documentId}}
+  body: json
+  auth: none
+}
+
+headers {
+  Authorization: Bearer {{driverAccessToken}}
+  Content-Type: application/json
+}
+
+body:json {
+  {
+    "fileUrl": "https://res.cloudinary.com/example/image/upload/v1/driver-license-renewal.jpg"
+  }
+}
+
+docs {
+  Replace a driver-owned verification document. Upload the file first, then send asset.secureUrl.
+  Replacing a document clears prior review metadata and returns it to PENDING review.
+}

@@ -1,0 +1,15 @@
+meta {
+  name: list-xendit-channels
+  type: http
+  seq: 1
+}
+
+get {
+  url: {{baseUrl}}/api/driver/payouts/xendit-channels
+  body: none
+  auth: none
+}
+
+headers {
+  Authorization: Bearer {{driverAccessToken}}
+}

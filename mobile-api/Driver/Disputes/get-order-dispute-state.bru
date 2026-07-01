@@ -1,0 +1,19 @@
+meta {
+  name: get-order-dispute-state
+  type: http
+  seq: 2
+}
+
+get {
+  url: {{baseUrl}}/api/driver/orders/{{orderId}}/disputes
+  body: none
+  auth: none
+}
+
+headers {
+  Authorization: Bearer {{driverAccessToken}}
+}
+
+docs {
+  Returns whether the driver can open a dispute for an assigned order.
+}

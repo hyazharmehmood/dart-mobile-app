@@ -1,0 +1,28 @@
+meta {
+  name: send-verification-code
+  type: http
+  seq: 3
+}
+
+post {
+  url: {{baseUrl}}/api/auth/send-verification-code
+  body: json
+  auth: none
+}
+
+headers {
+  Content-Type: application/json
+}
+
+body:json {
+  {
+    "email": "{{customerEmail}}"
+  }
+}
+
+docs {
+  Sends a 6-digit email verification code for accounts with unverified email.
+
+  Code expires in 10 minutes.
+  In local dev without RESEND_API_KEY, check server logs for the code.
+}

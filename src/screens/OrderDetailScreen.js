@@ -1,10 +1,15 @@
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import Ionicons from "@expo/vector-icons/Ionicons";
-import { ActivityIndicator, Image, Pressable, RefreshControl, ScrollView, StatusBar, Text, View } from "react-native";
+import * as ImagePicker from "expo-image-picker";
+import { ActivityIndicator, Image, Modal, Pressable, RefreshControl, ScrollView, StatusBar, Text, TextInput, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
+import Button from "../components/ui/Button";
 import { useToast } from "../components/ui/ToastProvider";
+import { getOrderDisputeState, openDispute } from "../services/disputeService";
+import { createReview, getReview, getReviewEligibility, updateReview } from "../services/reviewService";
 import { joinOrderRoom, leaveOrderRoom } from "../services/socketService";
+import { uploadReviewPhoto } from "../services/uploadService";
 import useOrderStore from "../store/useOrderStore";
 
 const EMPTY_EVENTS = [];
@@ -53,11 +58,125 @@ function statusMeta(status) {
     return { icon: "restaurant", label: "Preparing", tone: "primary" };
   }
 
-  if (normalized.includes("rider") || normalized.includes("pickup") || normalized.includes("transit")) {
+  if (
+    normalized.includes("driver_assigned") ||
+    normalized.includes("driver_auto_assigned") ||
+    normalized.includes("driver_accepted") ||
+    normalized.includes("rider") ||
+    normalized.includes("pickup") ||
+    normalized.includes("picked_up") ||
+    normalized.includes("on_the_way") ||
+    normalized.includes("transit")
+  ) {
     return { icon: "bicycle", label: "On the way", tone: "primary" };
   }
 
   return { icon: "time", label: statusLabel(status), tone: "primary" };
+}
+
+function isDelivered(order) {
+  return String(order?.statusCode || order?.status || "").toLowerCase().includes("deliver");
+}
+
+function RatingRow({ label, value, onChange }) {
+  return (
+    <View className="mb-4">
+      <Text className="mb-2 text-sm font-bold text-ink">{label}</Text>
+      <View className="flex-row">
+        {[1, 2, 3, 4, 5].map((rating) => (
+          <Pressable key={rating} onPress={() => onChange(rating)} className="mr-2 h-10 w-10 items-center justify-center rounded-full bg-[#FFF0E5]">
+            <Ionicons name={rating <= value ? "star" : "star-outline"} size={20} color="#FF6400" />
+          </Pressable>
+        ))}
+      </View>
+    </View>
+  );
+}
+
+function ReviewModal({
+  visible,
+  foodRating,
+  deliveryRating,
+  comment,
+  photos,
+  isSubmitting,
+  onClose,
+  onFoodRating,
+  onDeliveryRating,
+  onComment,
+  onPickPhoto,
+  onSubmit
+}) {
+  return (
+    <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
+      <View className="flex-1 justify-end bg-black/40">
+        <Pressable className="flex-1" onPress={onClose} />
+        <View className="rounded-t-[28px] bg-white px-5 pb-6 pt-5">
+          <Text className="text-xl font-extrabold text-ink">Review order</Text>
+          <Text className="mt-1 text-sm text-muted">Share feedback for this delivered order.</Text>
+          <View className="mt-5">
+            <RatingRow label="Food" value={foodRating} onChange={onFoodRating} />
+            <RatingRow label="Delivery" value={deliveryRating} onChange={onDeliveryRating} />
+            <TextInput
+              value={comment}
+              onChangeText={onComment}
+              placeholder="Optional comment"
+              placeholderTextColor="#9CA3AF"
+              multiline
+              className="min-h-[100px] rounded-2xl border border-border px-4 py-3 text-base text-ink"
+            />
+            <Pressable
+              disabled={isSubmitting || photos.length >= 3}
+              onPress={onPickPhoto}
+              className="mt-4 flex-row items-center justify-center rounded-2xl border border-border px-4 py-3"
+            >
+              <Ionicons name="image-outline" size={20} color="#FF6400" />
+              <Text className="ml-2 text-sm font-bold text-primary">
+                {photos.length ? `${photos.length}/3 photos added` : "Add photo"}
+              </Text>
+            </Pressable>
+            <Button title="Submit review" onPress={onSubmit} loading={isSubmitting} className="mt-5" />
+          </View>
+        </View>
+      </View>
+    </Modal>
+  );
+}
+
+function DisputeModal({ visible, type, summary, isSubmitting, onClose, onType, onSummary, onSubmit }) {
+  const types = ["MISSING_WRONG_ITEM", "FOOD_QUALITY", "DELIVERY_ISSUE", "PAYMENT_REFUND", "OTHER"];
+
+  return (
+    <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
+      <View className="flex-1 justify-end bg-black/40">
+        <Pressable className="flex-1" onPress={onClose} />
+        <View className="rounded-t-[28px] bg-white px-5 pb-6 pt-5">
+          <Text className="text-xl font-extrabold text-ink">Open dispute</Text>
+          <Text className="mt-1 text-sm text-muted">Tell support what went wrong.</Text>
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} className="mt-5">
+            {types.map((item) => (
+              <Pressable
+                key={item}
+                onPress={() => onType(item)}
+                className={`mr-2 rounded-full px-4 py-2 ${type === item ? "bg-primary" : "bg-[#F6F7F8]"}`}
+              >
+                <Text className={`text-xs font-bold ${type === item ? "text-white" : "text-ink"}`}>{item.replace(/_/g, " ")}</Text>
+              </Pressable>
+            ))}
+          </ScrollView>
+          <TextInput
+            value={summary}
+            onChangeText={onSummary}
+            placeholder="Summarize the issue"
+            placeholderTextColor="#9CA3AF"
+            multiline
+            className="mt-5 min-h-[110px] rounded-2xl border border-border px-4 py-3 text-base text-ink"
+          />
+          <Button title="Submit dispute" onPress={onSubmit} loading={isSubmitting} disabled={!summary.trim()} className="mt-5" />
+        </View>
+      </View>
+    </Modal>
+  );
 }
 
 function eventTitle(event) {
@@ -191,13 +310,29 @@ export default function OrderDetailScreen({ navigation, route }) {
   const isLoading = useOrderStore((state) => state.isLoading);
   const loadOrderDetail = useOrderStore((state) => state.loadOrderDetail);
   const loadOrderEvents = useOrderStore((state) => state.loadOrderEvents);
+  const [reviewEligibility, setReviewEligibility] = useState(null);
+  const [disputeState, setDisputeState] = useState(null);
+  const [reviewVisible, setReviewVisible] = useState(false);
+  const [disputeVisible, setDisputeVisible] = useState(false);
+  const [foodRating, setFoodRating] = useState(5);
+  const [deliveryRating, setDeliveryRating] = useState(5);
+  const [reviewComment, setReviewComment] = useState("");
+  const [reviewPhotos, setReviewPhotos] = useState([]);
+  const [disputeType, setDisputeType] = useState("MISSING_WRONG_ITEM");
+  const [disputeSummary, setDisputeSummary] = useState("");
+  const [isSubmittingAction, setIsSubmittingAction] = useState(false);
 
   const refresh = () => {
     if (!orderId) {
       return;
     }
 
-    Promise.all([loadOrderDetail(orderId), loadOrderEvents(orderId)]).catch((error) => {
+    Promise.all([
+      loadOrderDetail(orderId),
+      loadOrderEvents(orderId),
+      getReviewEligibility(orderId).then(setReviewEligibility).catch(() => null),
+      getOrderDisputeState(orderId).then(setDisputeState).catch(() => null)
+    ]).catch((error) => {
       showToast({
         type: "error",
         title: "Order unavailable",
@@ -230,6 +365,128 @@ export default function OrderDetailScreen({ navigation, route }) {
 
   const meta = statusMeta(order?.status);
   const items = orderItems(order);
+  const delivered = isDelivered(order);
+
+  const submitReview = async () => {
+    try {
+      setIsSubmittingAction(true);
+      const payload = {
+        foodRating,
+        deliveryRating,
+        comment: reviewComment.trim(),
+        photos: reviewPhotos
+      };
+
+      if (reviewEligibility?.existingReviewId) {
+        await updateReview(reviewEligibility.existingReviewId, payload);
+      } else {
+        await createReview(orderId, payload);
+      }
+      setReviewVisible(false);
+      setReviewPhotos([]);
+      const nextEligibility = await getReviewEligibility(orderId).catch(() => ({ eligible: false }));
+      setReviewEligibility(nextEligibility);
+      showToast({ type: "success", title: "Review submitted", message: "Thanks for your feedback." });
+    } catch (error) {
+      showToast({
+        type: "error",
+        title: "Review failed",
+        message: error?.response?.data?.error || error?.message || "Please try again."
+      });
+    } finally {
+      setIsSubmittingAction(false);
+    }
+  };
+
+  const openReviewModal = async () => {
+    if (reviewEligibility?.existingReviewId) {
+      try {
+        setIsSubmittingAction(true);
+        const data = await getReview(reviewEligibility.existingReviewId);
+        const review = data?.review || data;
+        setFoodRating(Number(review?.foodRating) || 5);
+        setDeliveryRating(Number(review?.deliveryRating) || 5);
+        setReviewComment(review?.comment || "");
+        setReviewPhotos(review?.photos || []);
+      } catch (error) {
+        showToast({
+          type: "error",
+          title: "Review unavailable",
+          message: error?.response?.data?.error || error?.message || "Please try again."
+        });
+      } finally {
+        setIsSubmittingAction(false);
+      }
+    }
+
+    setReviewVisible(true);
+  };
+
+  const pickReviewPhoto = async () => {
+    const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
+
+    if (!permission.granted) {
+      showToast({ type: "error", title: "Permission required", message: "Allow photo access to upload review photos." });
+      return;
+    }
+
+    const result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ["images"],
+      quality: 0.8
+    });
+    const asset = result?.assets?.[0];
+
+    if (result.canceled || !asset?.uri) {
+      return;
+    }
+
+    try {
+      setIsSubmittingAction(true);
+      const upload = await uploadReviewPhoto({
+        uri: asset.uri,
+        name: asset.fileName || "review-photo.jpg",
+        type: asset.mimeType || "image/jpeg"
+      });
+      const url = upload.url;
+      const publicId = upload.publicId;
+
+      if (!url || !publicId) {
+        throw new Error("Photo upload response is missing url or publicId.");
+      }
+
+      setReviewPhotos((current) => [...current, { url, publicId }].slice(0, 3));
+    } catch (error) {
+      showToast({
+        type: "error",
+        title: "Photo upload failed",
+        message: error?.response?.data?.error || error?.message || "Please try another image."
+      });
+    } finally {
+      setIsSubmittingAction(false);
+    }
+  };
+
+  const submitDispute = async () => {
+    try {
+      setIsSubmittingAction(true);
+      const data = await openDispute(orderId, {
+        type: disputeType,
+        summary: disputeSummary.trim()
+      });
+      setDisputeVisible(false);
+      setDisputeSummary("");
+      setDisputeState({ dispute: data?.dispute, canOpen: false, reason: "A dispute already exists for this order" });
+      showToast({ type: "success", title: "Dispute opened", message: "Support can now review your issue." });
+    } catch (error) {
+      showToast({
+        type: "error",
+        title: "Dispute failed",
+        message: error?.response?.data?.error || error?.message || "Please try again."
+      });
+    } finally {
+      setIsSubmittingAction(false);
+    }
+  };
 
   return (
     <SafeAreaView className="flex-1 bg-primary" edges={["top"]}>
@@ -330,9 +587,56 @@ export default function OrderDetailScreen({ navigation, route }) {
             <View className="mt-5">
               <Timeline events={events} currentStatus={order.status} />
             </View>
+
+            {delivered ? (
+              <View className="mt-5 rounded-[24px] bg-white px-5 py-5 shadow-sm">
+                <Text className="text-lg font-extrabold text-ink">After delivery</Text>
+                <View className="mt-4">
+                  {reviewEligibility?.eligible ? (
+                    <Button title="Review this order" onPress={openReviewModal} />
+                  ) : reviewEligibility?.existingReviewId ? (
+                    <Button title="Edit review" variant="secondary" onPress={openReviewModal} />
+                  ) : null}
+                  {disputeState?.canOpen ? (
+                    <Button title="Open dispute" variant="secondary" onPress={() => setDisputeVisible(true)} className="mt-3" />
+                  ) : disputeState?.dispute ? (
+                    <Button
+                      title="View dispute"
+                      variant="secondary"
+                      onPress={() => navigation.navigate("DisputeDetail", { disputeId: disputeState.dispute.id })}
+                      className="mt-3"
+                    />
+                  ) : null}
+                </View>
+              </View>
+            ) : null}
           </>
         ) : null}
       </ScrollView>
+      <ReviewModal
+        visible={reviewVisible}
+        foodRating={foodRating}
+        deliveryRating={deliveryRating}
+        comment={reviewComment}
+        photos={reviewPhotos}
+        isSubmitting={isSubmittingAction}
+        onClose={() => setReviewVisible(false)}
+        onFoodRating={setFoodRating}
+        onDeliveryRating={setDeliveryRating}
+        onComment={setReviewComment}
+        onPickPhoto={pickReviewPhoto}
+        onSubmit={submitReview}
+      />
+      <DisputeModal
+        visible={disputeVisible}
+        type={disputeType}
+        summary={disputeSummary}
+        isSubmitting={isSubmittingAction}
+        onClose={() => setDisputeVisible(false)}
+        onType={setDisputeType}
+        onSummary={setDisputeSummary}
+        onSubmit={submitDispute}
+      />
     </SafeAreaView>
   );
 }

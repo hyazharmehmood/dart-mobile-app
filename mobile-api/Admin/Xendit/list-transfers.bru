@@ -1,0 +1,20 @@
+meta {
+  name: list-transfers
+  type: http
+  seq: 2
+}
+
+get {
+  url: {{baseUrl}}/api/admin/xendit/transfers?partyType={{providerPartyType}}&status={{providerTransferStatus}}&providerAccountId={{xenditAccountId}}
+  body: none
+  auth: none
+}
+
+headers {
+  Cookie: {{adminSessionCookie}}
+}
+
+docs {
+  Lists Xendit ProviderTransfer audit rows. Filters are optional; clear
+  providerPartyType/providerTransferStatus/xenditAccountId to list all.
+}

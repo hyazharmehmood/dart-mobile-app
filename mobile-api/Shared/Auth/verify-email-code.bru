@@ -1,0 +1,26 @@
+meta {
+  name: verify-email-code
+  type: http
+  seq: 4
+}
+
+post {
+  url: {{baseUrl}}/api/auth/verify-email-code
+  body: json
+  auth: none
+}
+
+headers {
+  Content-Type: application/json
+}
+
+body:json {
+  {
+    "email": "{{customerEmail}}",
+    "code": "123456"
+  }
+}
+
+docs {
+  Verifies the user's email using the 6-digit code from send-verification-code.
+}

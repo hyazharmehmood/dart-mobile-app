@@ -1,0 +1,20 @@
+meta {
+  name: get-account-balance
+  type: http
+  seq: 1
+}
+
+get {
+  url: {{baseUrl}}/api/admin/xendit/accounts/{{providerAccountId}}/balance
+  body: none
+  auth: none
+}
+
+headers {
+  Cookie: {{adminSessionCookie}}
+}
+
+docs {
+  Admin balance sync for a restaurant/driver ProviderAccount. Returns the real
+  Xendit owned-subaccount balance used for payout validation.
+}

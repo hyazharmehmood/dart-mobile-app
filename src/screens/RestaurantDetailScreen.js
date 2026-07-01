@@ -17,8 +17,11 @@ import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context"
 
 import Button from "../components/ui/Button";
 import { useToast } from "../components/ui/ToastProvider";
+import { listBranchReviews } from "../services/reviewService";
 import { getRestaurantMenu } from "../services/restaurantService";
 import useCartStore from "../store/useCartStore";
+import useAuthStore from "../store/useAuthStore";
+import useFavoriteStore from "../store/useFavoriteStore";
 
 const STICKY_MENU_SCROLL_OFFSET = 132;
 const STICKY_PIN_HYSTERESIS = 18;
@@ -38,6 +41,10 @@ function currencyLabel(label, fallbackValue = 0) {
 
 function getRestaurantImage(restaurant) {
   return restaurant?.coverImageUrl || restaurant?.photoUrls?.[0] || null;
+}
+
+function branchIdFrom(restaurant) {
+  return restaurant?.branchId || restaurant?.activeBranchId || restaurant?.defaultBranchId || restaurant?.branches?.[0]?.id || null;
 }
 
 function getItemImage(item) {
@@ -636,6 +643,7 @@ export default function RestaurantDetailScreen({ navigation, route }) {
   const [menuSearchQuery, setMenuSearchQuery] = useState("");
   const [isSearchOpen, setIsSearchOpen] = useState(false);
   const [isMenuPinned, setIsMenuPinned] = useState(false);
+  const [branchReviews, setBranchReviews] = useState([]);
   const scrollRef = useRef(null);
   const sectionOffsetsRef = useRef({});
   const stickyHeaderYRef = useRef(0);
@@ -644,12 +652,16 @@ export default function RestaurantDetailScreen({ navigation, route }) {
   const manualTabLockUntilRef = useRef(0);
   const addLockRef = useRef(false);
   const { showToast } = useToast();
+  const user = useAuthStore((state) => state.user);
+  const isGuest = useAuthStore((state) => state.isGuest);
   const setCartRestaurant = useCartStore((state) => state.setRestaurant);
   const addItem = useCartStore((state) => state.addItem);
   const updateQuantity = useCartStore((state) => state.updateQuantity);
   const loadQuote = useCartStore((state) => state.loadQuote);
   const cartItems = useCartStore((state) => state.items);
   const quote = useCartStore((state) => state.quote);
+  const isFavorite = useFavoriteStore((state) => state.isFavorite);
+  const toggleFavorite = useFavoriteStore((state) => state.toggleFavorite);
   const stickyMenuOffset = STICKY_MENU_SCROLL_OFFSET + insets.top;
   const goBackToFeed = () => {
     if (navigation.canGoBack()) {
@@ -703,6 +715,32 @@ export default function RestaurantDetailScreen({ navigation, route }) {
       setCartRestaurant(restaurant);
     }
   }, [restaurant, setCartRestaurant]);
+
+  useEffect(() => {
+    let active = true;
+    const branchId = branchIdFrom(restaurant);
+
+    if (!branchId) {
+      setBranchReviews([]);
+      return undefined;
+    }
+
+    listBranchReviews(branchId, { page: 1, pageSize: 3 })
+      .then((data) => {
+        if (active) {
+          setBranchReviews(data?.reviews || data?.items || []);
+        }
+      })
+      .catch(() => {
+        if (active) {
+          setBranchReviews([]);
+        }
+      });
+
+    return () => {
+      active = false;
+    };
+  }, [restaurant]);
 
   useEffect(() => {
     if (!activeQuantityItemId) {
@@ -919,6 +957,23 @@ export default function RestaurantDetailScreen({ navigation, route }) {
     }
   };
 
+  const handleFavoritePress = async () => {
+    if (!user || isGuest) {
+      navigation.navigate("Login");
+      return;
+    }
+
+    try {
+      await toggleFavorite(displayRestaurant);
+    } catch (error) {
+      showToast({
+        type: "error",
+        title: "Favorite failed",
+        message: error?.response?.data?.error || error?.message || "Please try again."
+      });
+    }
+  };
+
   const displayRestaurant = restaurant || initialRestaurant || {
     name: "Restaurant",
     rating: null,
@@ -981,9 +1036,13 @@ export default function RestaurantDetailScreen({ navigation, route }) {
                     <Pressable className="mr-3 h-12 w-12 items-center justify-center rounded-full bg-white shadow-md">
                       <Ionicons name="share-social-outline" size={24} color="#1F2933" />
                     </Pressable>
-                    {/* <Pressable className="h-12 w-12 items-center justify-center rounded-full bg-white shadow-md">
-                      <Ionicons name="person-add-outline" size={24} color="#1F2933" />
-                    </Pressable> */}
+                    <Pressable onPress={handleFavoritePress} className="h-12 w-12 items-center justify-center rounded-full bg-white shadow-md">
+                      <Ionicons
+                        name={isFavorite(displayRestaurant) ? "heart" : "heart-outline"}
+                        size={24}
+                        color={isFavorite(displayRestaurant) ? "#FF6400" : "#1F2933"}
+                      />
+                    </Pressable>
                   </View>
                 </View>
               </View>
@@ -1122,6 +1181,29 @@ export default function RestaurantDetailScreen({ navigation, route }) {
                   </View>
                 </View>
               ))}
+
+          {!isLoading && branchReviews.length ? (
+            <View className="mt-2 px-5 pb-8">
+              <Text className="mb-4 text-xl font-bold text-ink">Customer reviews</Text>
+              {branchReviews.map((review) => (
+                <View key={review.id} className="mb-3 rounded-2xl bg-[#F7F8FA] px-4 py-4">
+                  <View className="flex-row items-center justify-between">
+                    <Text className="font-extrabold text-ink" numberOfLines={1}>
+                      {review.customerName || review.customer?.name || "Dart customer"}
+                    </Text>
+                    <Text className="text-sm font-bold text-primary">
+                      ★ {review.foodRating || review.rating || review.deliveryRating || 5}
+                    </Text>
+                  </View>
+                  {review.comment ? (
+                    <Text className="mt-2 text-sm leading-5 text-muted" numberOfLines={3}>
+                      {review.comment}
+                    </Text>
+                  ) : null}
+                </View>
+              ))}
+            </View>
+          ) : null}
         </ScrollView>
 
         {cartCount ? (

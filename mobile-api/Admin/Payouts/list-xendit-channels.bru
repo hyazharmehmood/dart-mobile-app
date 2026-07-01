@@ -1,0 +1,15 @@
+meta {
+  name: list-xendit-channels
+  type: http
+  seq: 0
+}
+
+get {
+  url: {{baseUrl}}/api/admin/payouts/xendit-channels
+  body: none
+  auth: none
+}
+
+headers {
+  Cookie: {{adminSessionCookie}}
+}

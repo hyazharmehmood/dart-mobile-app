@@ -1,0 +1,15 @@
+meta {
+  name: get-xendit-payout-status
+  type: http
+  seq: 4
+}
+
+get {
+  url: {{baseUrl}}/api/admin/payouts/{{payoutId}}/xendit-status
+  body: none
+  auth: none
+}
+
+headers {
+  Cookie: {{adminSessionCookie}}
+}

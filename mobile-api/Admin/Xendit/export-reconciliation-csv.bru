@@ -1,0 +1,19 @@
+meta {
+  name: export-reconciliation-csv
+  type: http
+  seq: 1
+}
+
+get {
+  url: {{baseUrl}}/api/admin/xendit/reconciliation?format=csv
+  body: none
+  auth: none
+}
+
+headers {
+  Cookie: {{adminSessionCookie}}
+}
+
+docs {
+  Downloads the Xendit reconciliation CSV for finance review.
+}

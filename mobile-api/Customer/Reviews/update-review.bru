@@ -1,0 +1,37 @@
+meta {
+  name: update-review
+  type: http
+  seq: 6
+}
+
+patch {
+  url: {{baseUrl}}/api/customer/reviews/{{reviewId}}
+  body: json
+  auth: none
+}
+
+headers {
+  Authorization: Bearer {{customerAccessToken}}
+  Content-Type: application/json
+}
+
+body:json {
+  {
+    "foodRating": 4,
+    "deliveryRating": 5,
+    "comment": "Updated comment after edit window check.",
+    "photos": [
+      {
+        "url": "https://res.cloudinary.com/example/image/upload/v1/review.jpg",
+        "publicId": "dart/uploads/users/user_id/reviews/review"
+      }
+    ]
+  }
+}
+
+docs {
+  Updates a review within the 24-hour edit window.
+
+  Upload photos first with POST /api/customer/reviews/photos, then pass url + publicId here.
+  Sending photos replaces all existing review photos.
+}

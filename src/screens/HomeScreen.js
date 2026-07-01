@@ -1,8 +1,10 @@
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Ionicons from "@expo/vector-icons/Ionicons";
+import { useFocusEffect } from "@react-navigation/native";
 import {
   BackHandler,
   Image,
+  Linking,
   Modal,
   Pressable,
   RefreshControl,
@@ -14,48 +16,48 @@ import {
 } from "react-native";
 import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
 
+import HomeBannerCarousel from "../components/HomeBannerCarousel";
+import ActiveOrderChip from "../components/ActiveOrderChip";
+import AddressPickerSheet from "../components/AddressPickerSheet";
+import RestaurantFeedCard, { getRestaurantName } from "../components/RestaurantFeedCard";
 import Button from "../components/ui/Button";
+import { useToast } from "../components/ui/ToastProvider";
 import useAddressStore from "../store/useAddressStore";
 import useAuthStore from "../store/useAuthStore";
 import useFeedStore from "../store/useFeedStore";
+import useFavoriteStore from "../store/useFavoriteStore";
 import useNotificationStore from "../store/useNotificationStore";
+import useOrderStore from "../store/useOrderStore";
+import { isActiveOrder } from "../utils/orderTracking";
+import { profileDisplayName, profileImageUrl } from "../utils/profileDisplay";
 
 const DARK_GREEN = "#003F2D";
 
-function getImageUrl(item) {
-  return (
-    item?.coverImageUrl ||
-    item?.logoUrl ||
-    item?.imageUrl ||
-    item?.photoUrls?.[0] ||
-    null
-  );
-}
-
-function getName(item, fallback = "Restaurant") {
-  if (typeof item === "string") {
-    return item;
-  }
-
-  return item?.name || item?.label || item?.title || fallback;
-}
-
-function CuisinePill({ cuisine, index }) {
+function CuisinePill({ cuisine, active, onPress }) {
   const label = typeof cuisine === "string" ? cuisine : cuisine?.label || cuisine?.name || "Food";
-  const imageUrl = cuisine?.imageUrl || cuisine?.iconUrl || null;
+  const imageUrl = cuisine?.imageUrl || cuisine?.iconUrl || cuisine?.image || null;
 
   return (
-    <Pressable className="mr-4 w-16 items-center">
-      <View className="h-14 w-14 overflow-hidden rounded-full bg-[#F6F6F6] shadow-sm">
-        {imageUrl ? (
-          <Image source={{ uri: imageUrl }} className="h-full w-full" resizeMode="cover" />
-        ) : (
-          <View className="h-full w-full items-center justify-center bg-[#F1F2F4]">
-            <Text className="text-lg font-extrabold text-primary">{label.slice(0, 1)}</Text>
-          </View>
-        )}
+    <Pressable onPress={() => onPress(cuisine)} className="mr-4 w-[4.5rem] items-center">
+      <View
+        className={`items-center justify-center rounded-full border-2 p-1 ${
+          active ? "border-primary bg-[#FFF8F3]" : "border-[#E8EAED] bg-white"
+        }`}
+      >
+        <View className="h-14 w-14 overflow-hidden rounded-full bg-[#F6F6F6]">
+          {imageUrl ? (
+            <Image source={{ uri: imageUrl }} className="h-full w-full" resizeMode="cover" />
+          ) : (
+            <View className="h-full w-full items-center justify-center bg-[#F1F2F4]">
+              <Text className="text-lg font-extrabold text-primary">{label.slice(0, 1)}</Text>
+            </View>
+          )}
+        </View>
       </View>
-      <Text className="mt-2 text-center text-xs text-ink" numberOfLines={1}>
+      <Text
+        className={`mt-2 text-center text-xs ${active ? "font-semibold text-primary" : "font-medium text-ink"}`}
+        numberOfLines={1}
+      >
         {label}
       </Text>
     </Pressable>
@@ -70,8 +72,8 @@ function CuisineSkeletonRow() {
   return (
     <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ paddingRight: 24 }}>
       {[0, 1, 2, 3, 4, 5].map((item) => (
-        <View key={item} className="mr-4 w-16 items-center">
-          <SkeletonBlock className="h-14 w-14 rounded-full" />
+        <View key={item} className="mr-4 w-[4.5rem] items-center">
+          <SkeletonBlock className="h-[4.25rem] w-[4.25rem] rounded-full" />
           <SkeletonBlock className="mt-2 h-3 w-12 rounded-full" />
         </View>
       ))}
@@ -111,56 +113,8 @@ function EmptySection({ message }) {
   );
 }
 
-function RestaurantCard({ restaurant, compact = false, onPress }) {
-  const imageUrl = getImageUrl(restaurant);
-
-  return (
-    <Pressable
-      onPress={onPress}
-      className={`${compact ? "mr-4 w-80" : "mb-5 w-full"} overflow-hidden rounded-2xl bg-white`}
-    >
-      <View className={`${compact ? "h-36" : "h-44"} overflow-hidden rounded-2xl bg-[#F6F6F6]`}>
-        {imageUrl ? (
-          <Image source={{ uri: imageUrl }} className="h-full w-full" resizeMode="cover" />
-        ) : (
-          <View className="h-full w-full items-center justify-center bg-[#EEF0F2]">
-            <Ionicons name="restaurant-outline" size={34} color="#9CA3AF" />
-          </View>
-        )}
-        <View className="absolute right-3 top-3 h-8 w-8 items-center justify-center rounded-full bg-white shadow-sm">
-          <Ionicons name="heart-outline" size={21} color="#1F2933" />
-        </View>
-      </View>
-      <View className="pt-3">
-        <View className="flex-row items-start justify-between">
-          <Text className="mr-3 flex-1 text-base font-bold text-ink" numberOfLines={1}>
-            {getName(restaurant)}
-          </Text>
-          <View className="flex-row items-center">
-            <Ionicons name="star" size={14} color="#F5B400" />
-            <Text className="ml-1 text-xs text-ink">
-              {restaurant?.rating || "New"} {restaurant?.reviewCount ? `(${restaurant.reviewCount})` : ""}
-            </Text>
-          </View>
-        </View>
-        <Text className="mt-1 text-xs text-muted" numberOfLines={1}>
-          {restaurant?.deliveryEta || "Delivery"} · ₱₱ · {restaurant?.cuisine || restaurant?.cuisines?.join(", ") || "Restaurant"}
-        </Text>
-        {restaurant?.deliveryFee ? (
-          <Text className="mt-1 text-xs text-muted" numberOfLines={1}>
-            from ₱{restaurant.deliveryFee} with saver
-          </Text>
-        ) : null}
-        <View className="mt-2 self-start rounded-full bg-[#FFE8E8] px-2 py-1">
-          <Text className="text-xs font-semibold text-[#E52626]">20% Off</Text>
-        </View>
-      </View>
-    </Pressable>
-  );
-}
-
 function BrandBubble({ brand, index }) {
-  const brandName = getName(brand, "Brand");
+  const brandName = getRestaurantName(brand, "Brand");
 
   return (
     <Pressable className="mr-5 w-16 items-center">
@@ -373,12 +327,21 @@ function GuestAccountView({ onLoginPress }) {
   );
 }
 
-function CustomerAccountView({ profile, user, unreadCount, onLogout, onNotificationsPress, onOrdersPress }) {
-  const displayName =
-    profile?.name ||
-    user?.name ||
-    [profile?.firstName, profile?.lastName].filter(Boolean).join(" ") ||
-    "Dart customer";
+function CustomerAccountView({
+  favoriteCount,
+  profile,
+  user,
+  unreadCount,
+  onFavoritesPress,
+  onDisputesPress,
+  onLogout,
+  onNotificationsPress,
+  onOrdersPress,
+  onSettingsPress,
+  onAddressesPress
+}) {
+  const displayName = profileDisplayName(profile, user);
+  const avatarUrl = profileImageUrl(profile, user);
 
   return (
     <SafeAreaView className="flex-1 bg-white">
@@ -386,7 +349,7 @@ function CustomerAccountView({ profile, user, unreadCount, onLogout, onNotificat
       <View className="border-b border-border px-6 pb-5 pt-4">
         <View className="flex-row items-center justify-between">
           <Text className="text-[22px] font-extrabold text-ink">Account</Text>
-          <Pressable className="h-11 w-11 items-center justify-center rounded-full bg-surface">
+          <Pressable onPress={onSettingsPress} className="h-11 w-11 items-center justify-center rounded-full bg-surface">
             <Ionicons name="settings-outline" size={25} color="#FF6400" />
           </Pressable>
         </View>
@@ -395,16 +358,23 @@ function CustomerAccountView({ profile, user, unreadCount, onLogout, onNotificat
       <ScrollView className="flex-1" contentContainerStyle={{ paddingBottom: 118 }} showsVerticalScrollIndicator={false}>
         <View className="px-6 py-8">
           <View className="rounded-2xl bg-[#FFF0E5] px-5 py-5">
-            <View className="h-14 w-14 items-center justify-center rounded-full bg-primary">
-              <Ionicons name="person" size={28} color="#FFFFFF" />
-            </View>
+            {avatarUrl ? (
+              <Image source={{ uri: avatarUrl }} className="h-14 w-14 rounded-full" resizeMode="cover" />
+            ) : (
+              <View className="h-14 w-14 items-center justify-center rounded-full bg-primary">
+                <Ionicons name="person" size={28} color="#FFFFFF" />
+              </View>
+            )}
             <Text className="mt-4 text-xl font-bold text-ink">{displayName}</Text>
             <Text className="mt-1 text-sm text-muted">{user?.email || profile?.email || "Customer account"}</Text>
           </View>
 
           <Text className="mt-8 text-[18px] font-semibold text-ink">General</Text>
           <View className="mt-2">
+            <AccountRow icon="location-outline" title="Saved addresses" onPress={onAddressesPress} />
             <AccountRow icon="receipt-outline" title="Orders" onPress={onOrdersPress} />
+            <AccountRow icon="heart-outline" title="Favorites" badge={favoriteCount || null} onPress={onFavoritesPress} />
+            <AccountRow icon="chatbubbles-outline" title="Disputes" onPress={onDisputesPress} />
             <AccountRow
               icon="notifications-outline"
               title="Notifications"
@@ -426,6 +396,8 @@ function CustomerAccountView({ profile, user, unreadCount, onLogout, onNotificat
 
 function FeedView({
   cuisineItems,
+  banners,
+  selectedCuisine,
   error,
   isLoading,
   locationLabel,
@@ -439,9 +411,13 @@ function FeedView({
   onSearchChange,
   onLocationPress,
   onNotificationsPress,
+  onBannerPress,
+  onCuisinePress,
+  onFavoritePress,
+  isFavorite,
   onRestaurantPress
 }) {
-  const isSearchMode = searchQuery.trim().length > 0;
+  const isSearchMode = searchQuery.trim().length > 0 || Boolean(selectedCuisine);
   const showSearchSkeleton = isSearchMode && isLoading;
 
   return (
@@ -492,7 +468,13 @@ function FeedView({
         refreshControl={<RefreshControl refreshing={isLoading} onRefresh={refreshFeed} />}
         showsVerticalScrollIndicator={false}
       >
-        <View className="px-6 pt-5">
+        {!searchQuery.trim() && !selectedCuisine ? (
+          <View >
+            <HomeBannerCarousel banners={banners} onPress={onBannerPress} />
+          </View>
+        ) : null}
+
+        <View className={`px-6 ${searchQuery.trim() || selectedCuisine || !banners.length ? "pt-5" : ""}`}>
           {isLoading && !cuisineItems.length ? (
             <CuisineSkeletonRow />
           ) : (
@@ -501,11 +483,21 @@ function FeedView({
                 <CuisinePill
                   key={`${cuisine?.id || cuisine?.slug || cuisine?.name || cuisine}-${index}`}
                   cuisine={cuisine}
-                  index={index}
+                  active={
+                    selectedCuisine &&
+                    String(selectedCuisine).toLowerCase() === String(cuisine?.slug || "").toLowerCase()
+                  }
+                  onPress={onCuisinePress}
                 />
               ))}
             </ScrollView>
           )}
+
+          {selectedCuisine ? (
+            <Pressable onPress={() => onCuisinePress(null)} className="mt-4 self-start rounded-full bg-[#FFF0E5] px-4 py-2">
+              <Text className="text-sm font-bold text-primary">Clear cuisine filter</Text>
+            </Pressable>
+          ) : null}
 
           {error ? (
             <View className="mt-6 rounded-2xl bg-red-50 px-4 py-3">
@@ -528,10 +520,12 @@ function FeedView({
               contentContainerStyle={{ paddingRight: 24 }}
             >
               {orderItems.map((restaurant, index) => (
-                <RestaurantCard
+                <RestaurantFeedCard
                   key={restaurant.id || restaurant.slug || restaurant.name || index}
                   restaurant={restaurant}
                   compact
+                  favorite={isFavorite(restaurant)}
+                  onFavoritePress={onFavoritePress}
                   onPress={() => onRestaurantPress(restaurant)}
                 />
               ))}
@@ -565,9 +559,11 @@ function FeedView({
               [0, 1, 2].map((item) => <RestaurantCardSkeleton key={item} />)
             ) : nearbyItems.length ? (
               nearbyItems.map((restaurant, index) => (
-                <RestaurantCard
+                <RestaurantFeedCard
                   key={restaurant.id || restaurant.slug || restaurant.name || index}
                   restaurant={restaurant}
+                  favorite={isFavorite(restaurant)}
+                  onFavoritePress={onFavoritePress}
                   onPress={() => onRestaurantPress(restaurant)}
                 />
               ))
@@ -582,9 +578,14 @@ function FeedView({
 }
 
 export default function HomeScreen({ navigation }) {
+  const { showToast } = useToast();
   const [activeTab, setActiveTab] = useState("food");
   const [searchQuery, setSearchQuery] = useState("");
+  const [selectedCuisine, setSelectedCuisine] = useState("");
+  const [selectedCuisineMeta, setSelectedCuisineMeta] = useState(null);
   const [notificationsVisible, setNotificationsVisible] = useState(false);
+  const [addressPickerVisible, setAddressPickerVisible] = useState(false);
+  const [isSubmittingAddress, setIsSubmittingAddress] = useState(false);
   const searchInputRef = useRef(null);
   const user = useAuthStore((state) => state.user);
   const profile = useAuthStore((state) => state.profile);
@@ -596,19 +597,59 @@ export default function HomeScreen({ navigation }) {
   const markNotificationRead = useNotificationStore((state) => state.markRead);
   const markAllNotificationsRead = useNotificationStore((state) => state.markAllRead);
   const address = useAddressStore((state) => state.address);
+  const savedAddresses = useAddressStore((state) => state.savedAddresses);
+  const activeAddress = useAddressStore((state) => state.activeAddress);
+  const isLoadingAddresses = useAddressStore((state) => state.isLoading);
+  const loadAddresses = useAddressStore((state) => state.loadAddresses);
+  const activateAddress = useAddressStore((state) => state.activateAddress);
+  const deleteAddress = useAddressStore((state) => state.deleteAddress);
   const cuisines = useFeedStore((state) => state.cuisines);
   const topBrands = useFeedStore((state) => state.topBrands);
   const orderAgain = useFeedStore((state) => state.orderAgain);
   const restaurants = useFeedStore((state) => state.restaurants);
+  const banners = useFeedStore((state) => state.banners);
   const isLoading = useFeedStore((state) => state.isLoading);
   const error = useFeedStore((state) => state.error);
   const loadHomeFeed = useFeedStore((state) => state.loadHomeFeed);
+  const favorites = useFavoriteStore((state) => state.favorites);
+  const loadFavorites = useFavoriteStore((state) => state.loadFavorites);
+  const toggleFavorite = useFavoriteStore((state) => state.toggleFavorite);
+  const isFavorite = useFavoriteStore((state) => state.isFavorite);
+  const orders = useOrderStore((state) => state.orders);
+  const loadOrders = useOrderStore((state) => state.loadOrders);
+  const activeOrder = useMemo(() => orders.find(isActiveOrder) || null, [orders]);
 
-  const cuisineItems = cuisines;
+  const cuisineItems = useMemo(() => {
+    if (!selectedCuisineMeta?.slug) {
+      return cuisines;
+    }
+
+    const selectedSlug = String(selectedCuisineMeta.slug).toLowerCase();
+    const hasSelected = cuisines.some(
+      (cuisine) => String(cuisine?.slug || "").toLowerCase() === selectedSlug
+    );
+
+    if (hasSelected) {
+      return cuisines;
+    }
+
+    return [selectedCuisineMeta, ...cuisines];
+  }, [cuisines, selectedCuisineMeta]);
   const brandItems = topBrands.length ? topBrands : restaurants.slice(0, 6);
   const orderItems = orderAgain;
   const nearbyItems = searchQuery.trim() ? restaurants : restaurants.length ? restaurants : topBrands;
-  const locationLabel = address?.addressLine1 || address?.address || "75 Ayer Raja Crescent";
+  const locationLabel =
+    address?.label && address.label !== "Current location"
+      ? `${address.label} · ${address?.addressLine1 || address?.address || ""}`
+      : address?.addressLine1 || address?.address || "Select delivery address";
+
+  useFocusEffect(
+    useCallback(() => {
+      if (user && !isGuest) {
+        loadAddresses().catch(() => null);
+      }
+    }, [isGuest, loadAddresses, user])
+  );
 
   const openRestaurant = (restaurant) => {
     navigation.navigate("RestaurantDetail", {
@@ -622,8 +663,65 @@ export default function HomeScreen({ navigation }) {
       address,
       authenticated: Boolean(user && !isGuest),
       q: searchQuery,
+      cuisine: selectedCuisine,
       force: true
     });
+  };
+
+  const handleCuisinePress = (cuisine) => {
+    if (!cuisine) {
+      setSelectedCuisine("");
+      setSelectedCuisineMeta(null);
+      return;
+    }
+
+    setSelectedCuisine(cuisine?.slug || "");
+    setSelectedCuisineMeta(cuisine);
+  };
+
+  const handleBannerPress = (banner) => {
+    const destination = banner?.destination || {};
+    const type = String(destination.type || "").toUpperCase();
+
+    if (type === "RESTAURANT" && destination.slug) {
+      navigation.navigate("RestaurantDetail", { slug: destination.slug });
+      return;
+    }
+
+    if (type === "CUISINE") {
+      const slug = destination.slug || "";
+      const matchedCuisine = cuisines.find(
+        (cuisine) => String(cuisine?.slug || "").toLowerCase() === String(slug).toLowerCase()
+      );
+
+      setSelectedCuisine(slug);
+      setSelectedCuisineMeta(
+        matchedCuisine || {
+          slug,
+          label: destination.label || destination.name || slug,
+          name: destination.name || destination.label || slug,
+          imageUrl: destination.imageUrl || destination.iconUrl || null
+        }
+      );
+      return;
+    }
+
+    if (type === "URL" && destination.path) {
+      Linking.openURL(destination.path).catch(() => null);
+    }
+  };
+
+  const handleFavoritePress = async (restaurant) => {
+    if (!user || isGuest) {
+      navigation.navigate("Login");
+      return;
+    }
+
+    try {
+      await toggleFavorite(restaurant);
+    } catch (error) {
+      // Favorites are a convenience action; keep browsing uninterrupted.
+    }
   };
 
   const openNotificationsSheet = () => {
@@ -652,8 +750,16 @@ export default function HomeScreen({ navigation }) {
 
     setNotificationsVisible(false);
 
+    const routeDisputeId = String(notification.route || notification.metadata?.route || "").match(/\/disputes\/([^/?#]+)/)?.[1];
+    const disputeId = notification.disputeId || notification.metadata?.disputeId || routeDisputeId;
+
+    if (disputeId) {
+      navigation.navigate("DisputeDetail", { disputeId });
+      return;
+    }
+
     if (notification.orderId) {
-      navigation.navigate("OrderDetail", { orderId: notification.orderId });
+      navigation.navigate("OrderTracking", { orderId: notification.orderId });
       return;
     }
 
@@ -689,12 +795,27 @@ export default function HomeScreen({ navigation }) {
       loadHomeFeed({
         address,
         authenticated: Boolean(user && !isGuest),
-        q: searchQuery
+        q: searchQuery,
+        cuisine: selectedCuisine
       });
     }, searchQuery.trim() ? 350 : 0);
 
     return () => clearTimeout(timer);
-  }, [address?.latitude, address?.longitude, isGuest, loadHomeFeed, searchQuery, user]);
+  }, [address?.latitude, address?.longitude, isGuest, loadHomeFeed, searchQuery, selectedCuisine, user]);
+
+  useEffect(() => {
+    if (user && !isGuest) {
+      loadFavorites().catch(() => null);
+    }
+  }, [isGuest, loadFavorites, user]);
+
+  useFocusEffect(
+    useCallback(() => {
+      if (user && !isGuest) {
+        loadOrders({ limit: 15 }).catch(() => null);
+      }
+    }, [isGuest, loadOrders, user])
+  );
 
   const handleTabPress = (tab) => {
     if (tab === "search") {
@@ -713,6 +834,61 @@ export default function HomeScreen({ navigation }) {
     setActiveTab(tab);
   };
 
+  const openLocationPicker = () => {
+    if (user && !isGuest) {
+      setAddressPickerVisible(true);
+      loadAddresses().catch(() => null);
+      return;
+    }
+
+    navigation.navigate("Address", { returnToHome: true });
+  };
+
+  const handleAddressSelect = async (selected) => {
+    if (selected.id === activeAddress?.id) {
+      setAddressPickerVisible(false);
+      return;
+    }
+
+    try {
+      setIsSubmittingAddress(true);
+      await activateAddress(selected);
+      setAddressPickerVisible(false);
+      loadHomeFeed({
+        address: selected,
+        authenticated: true,
+        q: searchQuery,
+        cuisine: selectedCuisine,
+        force: true
+      });
+      showToast({ type: "success", title: "Address updated", message: "Restaurants will refresh for this location." });
+    } catch (error) {
+      showToast({
+        type: "error",
+        title: "Could not switch address",
+        message: error?.response?.data?.error || error?.message || "Please try again."
+      });
+    } finally {
+      setIsSubmittingAddress(false);
+    }
+  };
+
+  const handleAddressDelete = async (selected) => {
+    try {
+      setIsSubmittingAddress(true);
+      await deleteAddress(selected.id);
+      showToast({ type: "success", title: "Address deleted", message: "The address was removed." });
+    } catch (error) {
+      showToast({
+        type: "error",
+        title: "Delete failed",
+        message: error?.response?.data?.error || error?.message || "Please try again."
+      });
+    } finally {
+      setIsSubmittingAddress(false);
+    }
+  };
+
   const handleLogout = async () => {
     await logout({ asGuest: true });
   };
@@ -725,9 +901,14 @@ export default function HomeScreen({ navigation }) {
             profile={profile}
             user={user}
             unreadCount={unreadCount}
+            favoriteCount={favorites.length}
             onLogout={handleLogout}
+            onFavoritesPress={() => navigation.navigate("Favorites")}
+            onDisputesPress={() => navigation.navigate("Disputes")}
             onNotificationsPress={() => navigation.navigate("Notifications")}
             onOrdersPress={() => navigation.navigate("Orders")}
+            onSettingsPress={() => navigation.navigate("AccountSettings")}
+            onAddressesPress={() => navigation.navigate("SavedAddresses")}
           />
         ) : (
           <GuestAccountView onLoginPress={() => navigation.navigate("Login")} />
@@ -736,8 +917,10 @@ export default function HomeScreen({ navigation }) {
         <SafeAreaView className="flex-1" edges={["top"]} style={{ backgroundColor: DARK_GREEN }}>
           <View className="flex-1 bg-white">
             <FeedView
+              banners={banners}
               cuisineItems={cuisineItems}
               error={error}
+              isFavorite={isFavorite}
               isLoading={isLoading}
               locationLabel={locationLabel}
               nearbyItems={nearbyItems}
@@ -746,15 +929,42 @@ export default function HomeScreen({ navigation }) {
               refreshFeed={refreshFeed}
               searchInputRef={searchInputRef}
               searchQuery={searchQuery}
+              selectedCuisine={selectedCuisine}
               unreadCount={unreadCount}
+              onBannerPress={handleBannerPress}
+              onCuisinePress={handleCuisinePress}
+              onFavoritePress={handleFavoritePress}
               onSearchChange={setSearchQuery}
-              onLocationPress={() => navigation.navigate("Address", { returnToHome: true })}
+              onLocationPress={openLocationPicker}
               onNotificationsPress={openNotificationsSheet}
               onRestaurantPress={openRestaurant}
             />
           </View>
         </SafeAreaView>
       )}
+
+      <AddressPickerSheet
+        visible={addressPickerVisible}
+        addresses={savedAddresses}
+        activeAddressId={activeAddress?.id}
+        isLoading={isLoadingAddresses}
+        isSubmitting={isSubmittingAddress}
+        onClose={() => setAddressPickerVisible(false)}
+        onSelect={handleAddressSelect}
+        onEdit={(item) => {
+          setAddressPickerVisible(false);
+          navigation.navigate("Address", {
+            mode: "edit",
+            addressId: item.id,
+            returnToHome: true
+          });
+        }}
+        onDelete={handleAddressDelete}
+        onAddNew={() => {
+          setAddressPickerVisible(false);
+          navigation.navigate("Address", { mode: "add", returnToHome: true });
+        }}
+      />
 
       <HomeNotificationSheet
         notifications={notifications}
@@ -765,6 +975,13 @@ export default function HomeScreen({ navigation }) {
         onOpenNotification={openNotification}
         onReadAll={readAllNotifications}
       />
+
+      {activeOrder && activeTab !== "account" ? (
+        <ActiveOrderChip
+          order={activeOrder}
+          onPress={() => navigation.navigate("OrderTracking", { orderId: activeOrder.id, order: activeOrder })}
+        />
+      ) : null}
 
       <BottomNav activeTab={activeTab} onTabPress={handleTabPress} />
     </View>

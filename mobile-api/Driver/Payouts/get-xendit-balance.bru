@@ -1,0 +1,20 @@
+meta {
+  name: get-xendit-balance
+  type: http
+  seq: 0
+}
+
+get {
+  url: {{baseUrl}}/api/driver/wallet/xendit-balance
+  body: none
+  auth: none
+}
+
+headers {
+  Authorization: Bearer {{driverAccessToken}}
+}
+
+docs {
+  Returns the driver's real Xendit owned-subaccount balance. Use this as the
+  primary withdrawable wallet balance. Internal ledger values are audit-only.
+}

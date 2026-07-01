@@ -1,0 +1,37 @@
+meta {
+  name: create-review
+  type: http
+  seq: 2
+}
+
+post {
+  url: {{baseUrl}}/api/customer/orders/{{orderId}}/review
+  body: json
+  auth: none
+}
+
+headers {
+  Authorization: Bearer {{customerAccessToken}}
+  Content-Type: application/json
+}
+
+body:json {
+  {
+    "foodRating": 5,
+    "deliveryRating": 4,
+    "comment": "Great food and quick delivery.",
+    "photos": [
+      {
+        "url": "https://res.cloudinary.com/example/image/upload/v1/review.jpg",
+        "publicId": "dart/uploads/users/user_id/reviews/review"
+      }
+    ]
+  }
+}
+
+docs {
+  Creates a review for a delivered order.
+
+  Call GET /api/customer/orders/{orderId}/review-eligibility first.
+  Upload photos with POST /api/customer/reviews/photos before including them here.
+}

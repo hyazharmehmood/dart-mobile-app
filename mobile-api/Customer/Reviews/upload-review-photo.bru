@@ -1,0 +1,27 @@
+meta {
+  name: upload-review-photo
+  type: http
+  seq: 4
+}
+
+post {
+  url: {{baseUrl}}/api/customer/reviews/photos
+  body: multipartForm
+  auth: none
+}
+
+headers {
+  Authorization: Bearer {{customerAccessToken}}
+}
+
+body:multipart-form {
+  file: @file(/path/to/review-photo.jpg)
+}
+
+docs {
+  Uploads a review photo before creating or editing a review.
+
+  Allowed types: JPG, PNG, WebP, GIF.
+  Attach returned photo.url and photo.publicId in the review create or patch body.
+  Maximum 3 photos per review.
+}

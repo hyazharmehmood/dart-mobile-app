@@ -41,11 +41,12 @@ export async function getOrderAgain({ address, limit = 4 } = {}) {
   return response.data;
 }
 
-export async function listRestaurants({ address, q = "", page = 1, limit = 12 } = {}) {
+export async function listRestaurants({ address, q = "", cuisine = "", page = 1, limit = 12 } = {}) {
   const response = await api.get("/api/customer/restaurants", {
     params: {
       ...locationParams(address),
       q,
+      cuisine,
       sort: address?.latitude && address?.longitude ? "distance" : "recommended",
       page,
       limit

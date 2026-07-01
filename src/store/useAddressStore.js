@@ -51,6 +51,24 @@ export function normalizeAddress(address) {
   };
 }
 
+function buildAddressPayload(address, { label = "Home", isActive = true } = {}) {
+  const normalized = normalizeAddress(address);
+
+  return {
+    label: label || normalized.label || "Home",
+    address: normalized.address || normalized.addressLine1,
+    addressLine1: normalized.addressLine1,
+    addressLine2: normalized.addressLine2 || "",
+    city: normalized.city || "",
+    state: normalized.state || "",
+    postalCode: normalized.postalCode || "",
+    country: normalized.country || "PK",
+    latitude: normalized.latitude,
+    longitude: normalized.longitude,
+    isActive
+  };
+}
+
 const useAddressStore = create((set, get) => ({
   address: defaultDeliveryAddress,
   savedAddresses: [],
@@ -138,19 +156,10 @@ const useAddressStore = create((set, get) => ({
       return null;
     }
 
-    const payload = {
+    const payload = buildAddressPayload(currentAddress, {
       label: currentAddress.label || "Home",
-      address: currentAddress.address || currentAddress.addressLine1,
-      addressLine1: currentAddress.addressLine1,
-      addressLine2: currentAddress.addressLine2 || "",
-      city: currentAddress.city || "",
-      state: currentAddress.state || "",
-      postalCode: currentAddress.postalCode || "",
-      country: currentAddress.country || "PK",
-      latitude: currentAddress.latitude,
-      longitude: currentAddress.longitude,
       isActive: true
-    };
+    });
 
     set({ isLoading: true, error: null });
 
@@ -181,30 +190,140 @@ const useAddressStore = create((set, get) => ({
       throw error;
     }
   },
+  createSavedAddress: async (address, { label = "Home", makeActive = true } = {}) => {
+    const payload = buildAddressPayload(address, { label, isActive: makeActive });
+
+    set({ isLoading: true, error: null });
+
+    try {
+      const data = await createCustomerAddress(payload);
+      const savedAddress = normalizeAddress(data.address || payload);
+      const savedAddresses = [
+        savedAddress,
+        ...get().savedAddresses
+          .filter((item) => item.id !== savedAddress.id)
+          .map((item) => ({ ...item, isActive: makeActive ? false : item.isActive }))
+      ];
+
+      if (makeActive) {
+        saveStoredAddress(savedAddress).catch(() => {});
+      }
+
+      set({
+        address: makeActive ? savedAddress : get().address,
+        activeAddress: makeActive ? savedAddress : get().activeAddress,
+        savedAddresses,
+        hasUnsyncedAddress: false,
+        isLoading: false
+      });
+
+      return savedAddress;
+    } catch (error) {
+      set({
+        isLoading: false,
+        error: error?.response?.data?.error || error?.message || "Unable to save address"
+      });
+      throw error;
+    }
+  },
+  updateSavedAddress: async (addressId, address, { label } = {}) => {
+    const payload = buildAddressPayload(address, {
+      label: label || address?.label || "Home",
+      isActive: address?.isActive ?? true
+    });
+
+    set({ isLoading: true, error: null });
+
+    try {
+      const data = await updateCustomerAddress(addressId, payload);
+      const savedAddress = normalizeAddress(data.address || { ...payload, id: addressId });
+      const savedAddresses = get().savedAddresses.map((item) =>
+        item.id === savedAddress.id ? savedAddress : item
+      );
+
+      if (savedAddress.isActive || get().activeAddress?.id === savedAddress.id) {
+        saveStoredAddress(savedAddress).catch(() => {});
+        set({
+          address: savedAddress,
+          activeAddress: savedAddress,
+          savedAddresses,
+          hasUnsyncedAddress: false,
+          isLoading: false
+        });
+      } else {
+        set({
+          savedAddresses,
+          hasUnsyncedAddress: false,
+          isLoading: false
+        });
+      }
+
+      return savedAddress;
+    } catch (error) {
+      set({
+        isLoading: false,
+        error: error?.response?.data?.error || error?.message || "Unable to update address"
+      });
+      throw error;
+    }
+  },
   activateAddress: async (address) => {
     if (!address?.id) {
       const activeAddress = normalizeAddress(address);
       saveStoredAddress(activeAddress).catch(() => {});
       set({ address: activeAddress, activeAddress });
-      return;
+      return activeAddress;
     }
 
-    const data = await updateCustomerAddress(address.id, { isActive: true });
-    const activeAddress = normalizeAddress(data.address || address);
-    saveStoredAddress(activeAddress).catch(() => {});
-    set({ address: activeAddress, activeAddress, hasUnsyncedAddress: false });
+    set({ isLoading: true, error: null });
+
+    try {
+      const data = await updateCustomerAddress(address.id, { isActive: true });
+      const activeAddress = normalizeAddress(data.address || address);
+      const savedAddresses = get().savedAddresses.map((item) => ({
+        ...item,
+        isActive: item.id === activeAddress.id
+      }));
+      saveStoredAddress(activeAddress).catch(() => {});
+      set({
+        address: activeAddress,
+        activeAddress,
+        savedAddresses,
+        hasUnsyncedAddress: false,
+        isLoading: false
+      });
+      return activeAddress;
+    } catch (error) {
+      set({
+        isLoading: false,
+        error: error?.response?.data?.error || error?.message || "Unable to switch address"
+      });
+      throw error;
+    }
   },
   deleteAddress: async (addressId) => {
-    const data = await deleteCustomerAddress(addressId);
-    const activeAddress = normalizeAddress(data.activeAddress);
-    if (activeAddress) {
-      saveStoredAddress(activeAddress).catch(() => {});
+    set({ isLoading: true, error: null });
+
+    try {
+      const data = await deleteCustomerAddress(addressId);
+      const activeAddress = normalizeAddress(data.activeAddress);
+      if (activeAddress) {
+        saveStoredAddress(activeAddress).catch(() => {});
+      }
+      set({
+        savedAddresses: get().savedAddresses.filter((address) => address.id !== addressId),
+        activeAddress,
+        address: activeAddress || defaultDeliveryAddress,
+        isLoading: false
+      });
+      return activeAddress;
+    } catch (error) {
+      set({
+        isLoading: false,
+        error: error?.response?.data?.error || error?.message || "Unable to delete address"
+      });
+      throw error;
     }
-    set({
-      savedAddresses: get().savedAddresses.filter((address) => address.id !== addressId),
-      activeAddress,
-      address: activeAddress || defaultDeliveryAddress
-    });
   },
   resetAddressState: () => {
     clearStoredAddress().catch(() => {});

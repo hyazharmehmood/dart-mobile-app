@@ -1,0 +1,19 @@
+meta {
+  name: remove-favorite
+  type: http
+  seq: 3
+}
+
+delete {
+  url: {{baseUrl}}/api/customer/favorites/{{restaurantId}}
+  body: none
+  auth: none
+}
+
+headers {
+  Authorization: Bearer {{customerAccessToken}}
+}
+
+docs {
+  Removes a restaurant from the customer's favorites list.
+}

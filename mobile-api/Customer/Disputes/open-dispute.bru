@@ -1,0 +1,31 @@
+meta {
+  name: open-dispute
+  type: http
+  seq: 1
+}
+
+post {
+  url: {{baseUrl}}/api/customer/orders/{{orderId}}/disputes
+  body: json
+  auth: none
+}
+
+headers {
+  Authorization: Bearer {{customerAccessToken}}
+  Content-Type: application/json
+}
+
+body:json {
+  {
+    "type": "MISSING_WRONG_ITEM",
+    "summary": "Received the wrong item in my order."
+  }
+}
+
+docs {
+  Opens a dispute on a delivered order within the 7-day dispute window.
+
+  Types: MISSING_WRONG_ITEM, FOOD_QUALITY, DELIVERY_ISSUE, PAYMENT_REFUND, OTHER
+
+  Check GET /api/customer/orders/{orderId}/disputes first for canOpen state.
+}

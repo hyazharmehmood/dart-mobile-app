@@ -1,0 +1,43 @@
+meta {
+  name: update-profile
+  type: http
+  seq: 2
+}
+
+patch {
+  url: {{baseUrl}}/api/driver/profile
+  body: json
+  auth: none
+}
+
+headers {
+  Authorization: Bearer {{driverAccessToken}}
+  Content-Type: application/json
+}
+
+body:json {
+  {
+    "name": "Usama Driver",
+    "image": "https://res.cloudinary.com/example/image/upload/v1/driver-profile.jpg",
+    "phone": "+923001234567",
+    "vehicleType": "bike",
+    "vehicleName": "Honda CG 125",
+    "preferredZoneId": "zone_eme_lahore",
+    "zone": "EME Lahore",
+    "isAvailable": true,
+    "currentLatitude": 31.44269,
+    "currentLongitude": 74.20766
+  }
+}
+
+docs {
+  Account fields used by the driver mobile app. All fields are optional; send only the fields that changed.
+
+  - name, image, phone: Personal information
+  - vehicleType, vehicleName: Vehicle information
+  - preferredZoneId: Preferred delivery zone
+  - isAvailable: Online/offline offer availability
+
+  Send isAvailable true only after admin approval and a fresh GPS update.
+  Latitude and longitude must be sent together when updating live location.
+}

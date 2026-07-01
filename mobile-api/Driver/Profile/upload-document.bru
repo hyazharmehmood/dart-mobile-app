@@ -1,0 +1,26 @@
+meta {
+  name: upload-document
+  type: http
+  seq: 6
+}
+
+post {
+  url: {{baseUrl}}/api/driver/uploads
+  body: multipartForm
+  auth: none
+}
+
+headers {
+  Authorization: Bearer {{driverAccessToken}}
+}
+
+body:multipart-form {
+  file: @file(/path/to/driver-document.pdf)
+  kind: document
+  purpose: driver_license
+}
+
+docs {
+  Uploads an image or PDF for a driver document replacement. Use asset.secureUrl in
+  PATCH /api/driver/documents/{documentId}.
+}

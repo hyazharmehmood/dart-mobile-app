@@ -1,0 +1,33 @@
+meta {
+  name: get-order-dispute-state
+  type: http
+  seq: 3
+}
+
+get {
+  url: {{baseUrl}}/api/customer/orders/{{orderId}}/disputes
+  body: none
+  auth: none
+}
+
+headers {
+  Authorization: Bearer {{customerAccessToken}}
+}
+
+docs {
+  Returns whether the customer can open a dispute for the order and any existing dispute summary.
+
+  Success response:
+  {
+    "dispute": null,
+    "canOpen": true,
+    "reason": null
+  }
+
+  When a dispute already exists:
+  {
+    "dispute": { "id": "...", "status": "OPEN", "type": "MISSING_WRONG_ITEM", ... },
+    "canOpen": false,
+    "reason": "A dispute already exists for this order"
+  }
+}

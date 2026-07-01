@@ -1,0 +1,37 @@
+meta {
+  name: List Banners
+  type: http
+  seq: 1
+}
+
+get {
+  url: {{baseUrl}}/api/customer/banners
+  body: none
+  auth: none
+}
+
+docs {
+  Returns active, in-schedule platform banners for the customer home screen. No authentication required.
+
+  Response shape:
+  {
+    "banners": [{
+      "id": "banner_id",
+      "title": "Summer specials",
+      "subtitle": "Discover new restaurants",
+      "imageUrl": "https://...",
+      "altText": "Summer specials banner",
+      "destination": {
+        "type": "RESTAURANT",
+        "slug": "pizza-palace",
+        "path": "/r/pizza-palace"
+      },
+      "sortOrder": 0
+    }]
+  }
+
+  Destination types:
+  - RESTAURANT: path is /r/{slug}
+  - CUISINE: path is /?cuisine={slug}
+  - URL: path is the external HTTPS URL
+}

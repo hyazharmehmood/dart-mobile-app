@@ -1,0 +1,34 @@
+meta {
+  name: list-available-orders
+  type: http
+  seq: 1
+}
+
+get {
+  url: {{baseUrl}}/api/driver/orders/available
+  body: none
+  auth: none
+}
+
+headers {
+  Authorization: Bearer {{driverAccessToken}}
+}
+
+docs {
+  Returns unassigned READY orders in the driver's current delivery zone (hard zone match).
+
+  Driver must be approved, online (isAvailable), have fresh GPS, be inside an active zone, and have no active delivery.
+
+  Response:
+  - available[]: in-zone ready offers sorted by distance. Each includes restaurant logo/address,
+    customer avatar/address, deliveryLocation, item images, subtotal/tax/total, and dispatch.distanceKm.
+  - active[]: current deliveries with the same order detail shape for the Active tab.
+  - isAvailable flag (shown as Online in the app)
+  - dispatch.eligible / dispatch.reason / currentZoneId / locationUpdatedAt
+
+  There is no assignment.expiresAt in broadcast mode. Orders stay until accepted.
+
+  Listen for Socket.IO driver:orders-updated while foregrounded.
+  Send GPS heartbeat via PATCH /api/driver/location every 30–60s while on duty.
+  See docs/driver-dispatch-mobile-api.md
+}

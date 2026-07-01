@@ -1,0 +1,19 @@
+meta {
+  name: mark-transfer-reviewed
+  type: http
+  seq: 4
+}
+
+post {
+  url: {{baseUrl}}/api/admin/xendit/transfers/{{providerTransferId}}/review
+  body: none
+  auth: none
+}
+
+headers {
+  Cookie: {{adminSessionCookie}}
+}
+
+docs {
+  Marks a provider transfer as reviewed in the local providerResponse metadata.
+}

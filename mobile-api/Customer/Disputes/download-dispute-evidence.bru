@@ -1,0 +1,21 @@
+meta {
+  name: download-dispute-evidence
+  type: http
+  seq: 7
+}
+
+get {
+  url: {{baseUrl}}/api/disputes/{{disputeId}}/evidence/{{evidenceId}}
+  body: none
+  auth: none
+}
+
+headers {
+  Authorization: Bearer {{customerAccessToken}}
+}
+
+docs {
+  Authenticated evidence download. Returns a 302 redirect to a signed Cloudinary URL.
+
+  evidenceId comes from dispute message evidence items.
+}

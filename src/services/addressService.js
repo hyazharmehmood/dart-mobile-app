@@ -5,6 +5,11 @@ export async function listCustomerAddresses() {
   return response.data;
 }
 
+export async function getCustomerAddress(addressId) {
+  const response = await api.get(`/api/customer/addresses/${addressId}`);
+  return response.data;
+}
+
 export async function createCustomerAddress(payload) {
   const response = await api.post("/api/customer/addresses", payload);
   return response.data;

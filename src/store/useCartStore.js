@@ -386,6 +386,34 @@ const useCartStore = create((set, get) => ({
       error: null
     });
   },
+  finalizeAfterCheckout: async () => {
+    get().resetLocalCartState();
+
+    const retryDelays = [0, 700, 1400, 2200, 3200];
+
+    for (const delay of retryDelays) {
+      if (delay > 0) {
+        await new Promise((resolve) => setTimeout(resolve, delay));
+      }
+
+      try {
+        const cart = await get().hydrateServerCart();
+        if (!cart?.items?.length) {
+          return cart;
+        }
+      } catch (error) {
+        // Keep retrying until the backend cart catches up after payment.
+      }
+    }
+
+    try {
+      await get().clearCart();
+    } catch (error) {
+      get().resetLocalCartState();
+    }
+
+    return { items: [] };
+  },
   resetLocalCartState: () =>
     set({
       id: null,

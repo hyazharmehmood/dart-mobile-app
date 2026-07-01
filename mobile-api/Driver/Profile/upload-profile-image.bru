@@ -1,0 +1,26 @@
+meta {
+  name: upload-profile-image
+  type: http
+  seq: 5
+}
+
+post {
+  url: {{baseUrl}}/api/driver/uploads
+  body: multipartForm
+  auth: none
+}
+
+headers {
+  Authorization: Bearer {{driverAccessToken}}
+}
+
+body:multipart-form {
+  file: @file(/path/to/driver-profile-image.png)
+  kind: profile
+  purpose: driver-profile-image
+}
+
+docs {
+  Uploads a profile image for the authenticated driver. Use asset.secureUrl as image in
+  PATCH /api/driver/profile.
+}

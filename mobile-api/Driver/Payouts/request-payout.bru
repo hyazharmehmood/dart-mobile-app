@@ -1,0 +1,28 @@
+meta {
+  name: request-payout
+  type: http
+  seq: 2
+}
+
+post {
+  url: {{baseUrl}}/api/driver/payouts
+  body: json
+  auth: none
+}
+
+headers {
+  Authorization: Bearer {{driverAccessToken}}
+}
+
+body:json {
+  {
+    "amount": 50,
+    "payoutMethodId": "{{payoutMethodId}}",
+    "runDate": "2026-06-15"
+  }
+}
+
+docs {
+  Requires an approved payout method and sufficient Xendit available balance. Minimum amount is ₱50.
+  The resulting payout enters admin review before Xendit processing from the driver's owned subaccount.
+}

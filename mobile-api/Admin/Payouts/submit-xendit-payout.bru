@@ -1,0 +1,15 @@
+meta {
+  name: submit-xendit-payout
+  type: http
+  seq: 3
+}
+
+post {
+  url: {{baseUrl}}/api/admin/payouts/{{payoutId}}/submit-xendit
+  body: none
+  auth: none
+}
+
+headers {
+  Cookie: {{adminSessionCookie}}
+}

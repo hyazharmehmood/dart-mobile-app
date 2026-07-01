@@ -1,0 +1,19 @@
+meta {
+  name: get-review
+  type: http
+  seq: 5
+}
+
+get {
+  url: {{baseUrl}}/api/customer/reviews/{{reviewId}}
+  body: none
+  auth: none
+}
+
+headers {
+  Authorization: Bearer {{customerAccessToken}}
+}
+
+docs {
+  Returns the authenticated customer's own review, including photos.
+}

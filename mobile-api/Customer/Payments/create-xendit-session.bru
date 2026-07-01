@@ -1,0 +1,38 @@
+meta {
+  name: create-xendit-session
+  type: http
+  seq: 1
+}
+
+post {
+  url: {{baseUrl}}/api/customer/payments/xendit/session
+  body: json
+  auth: none
+}
+
+headers {
+  Authorization: Bearer {{customerAccessToken}}
+}
+
+body:json {
+  {
+    "useCart": true,
+    "restaurantSlug": "{{restaurantSlug}}",
+    "branchId": "{{branchId}}",
+    "deliveryAddress": "387-J, 2nd Floor, DHA Phase 12 Block J DHA EME Sector, Lahore, Pakistan",
+    "paymentChannel": "{{paymentChannel}}",
+    "client": "mobile",
+    "checkoutOrigin": "https://app.dart.com.ph",
+    "componentsAllowedOrigins": ["https://app.dart.com.ph"],
+    "componentsConfiguration": {
+      "origins": ["https://app.dart.com.ph"]
+    },
+    "useHostedCardCheckout": true
+  }
+}
+
+docs {
+  Mobile checkout should send useCart=true and client=mobile.
+  GCASH/PAYMAYA: open payment.redirectUrl in WebView, then poll status until confirmed=true.
+  CARDS: open payment.cardCheckoutUrl in WebView (not redirectUrl), listen for xendit_session_complete, then poll status.
+}

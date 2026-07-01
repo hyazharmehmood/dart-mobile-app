@@ -1,0 +1,25 @@
+meta {
+  name: list-disputes
+  type: http
+  seq: 1
+}
+
+get {
+  url: {{baseUrl}}/api/driver/disputes
+  body: none
+  auth: none
+}
+
+headers {
+  Authorization: Bearer {{driverAccessToken}}
+}
+
+params:query {
+  ~status: OPEN
+  ~page: 1
+  ~pageSize: 20
+}
+
+docs {
+  Lists disputes where the authenticated driver is a participant.
+}

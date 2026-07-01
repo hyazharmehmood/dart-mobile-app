@@ -1,12 +1,29 @@
-import { useMemo, useRef, useState } from "react";
+import { useCallback, useMemo, useRef, useState } from "react";
 import Ionicons from "@expo/vector-icons/Ionicons";
+import { useFocusEffect } from "@react-navigation/native";
 import { LinearGradient } from "expo-linear-gradient";
 import { ActivityIndicator, Image, Modal, Pressable, ScrollView, StatusBar, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
 import Button from "../components/ui/Button";
 import { useToast } from "../components/ui/ToastProvider";
-import { createDragonpayPayment, listDragonpayProcessors } from "../services/paymentService";
+import { getApiErrorMessage } from "../services/api";
+import {
+  buildXenditSessionPayload,
+  buildXenditSessionPayloadVariants,
+  channelCode,
+  channelDescription,
+  channelLabel,
+  createXenditPaymentSessionWithFallback,
+  extractXenditPaymentSession,
+  getCardCheckoutOriginErrorMessage,
+  isCardCheckoutOriginError,
+  isComponentsChannel,
+  isDartHostedCardCheckoutUrl,
+  listXenditChannels,
+  normalizeXenditChannels,
+  resolveCardCheckoutTarget
+} from "../services/paymentService";
 import useAddressStore from "../store/useAddressStore";
 import useAuthStore from "../store/useAuthStore";
 import useCartStore from "../store/useCartStore";
@@ -48,10 +65,6 @@ function numericMoney(value, fallback = 0) {
 
   const parsed = Number(String(value || "").replace(/[^\d.]/g, ""));
   return Number.isFinite(parsed) && parsed > 0 ? parsed : fallback;
-}
-
-function processorName(processor) {
-  return processor?.name || processor?.longName || processor?.shortName || processor?.procId || "Payment method";
 }
 
 function Step({ number, label, active }) {
@@ -114,7 +127,7 @@ function CheckoutGradientButton({ disabled, itemCount, loading, onPress, totalLa
             {loading ? "Preparing payment..." : "Confirm payment and address"}
           </Text>
           <Text className="mt-0.5 text-xs font-semibold text-white/85" numberOfLines={1}>
-            Secure Dragonpay checkout inside Dart
+            Secure Xendit checkout inside Dart
           </Text>
         </View>
         <View className="items-end">
@@ -230,8 +243,8 @@ function EmptyRecommendations() {
 function PaymentMethodSheet({
   amountLabel,
   isLoading,
-  isSubmitting,
-  processors,
+  submittingChannelCode,
+  channels,
   visible,
   onClose,
   onSelect
@@ -258,40 +271,53 @@ function PaymentMethodSheet({
             </View>
           ) : (
             <ScrollView showsVerticalScrollIndicator={false}>
-              <Pressable
-                disabled={isSubmitting}
-                onPress={() => onSelect({ procId: "", name: "Show all payment methods on Dragonpay" })}
-                className="mb-3 flex-row items-center rounded-2xl border border-border bg-white px-4 py-4"
-              >
-                <View className="mr-3 h-11 w-11 items-center justify-center rounded-full bg-[#FFF0E5]">
-                  <Ionicons name="card-outline" size={22} color="#FF6400" />
-                </View>
-                <View className="flex-1">
-                  <Text className="text-base font-bold text-ink">Show all payment methods</Text>
-                  <Text className="mt-1 text-xs text-muted">Open Dragonpay hosted method selector</Text>
-                </View>
-                {isSubmitting ? <ActivityIndicator color="#FF6400" /> : <Ionicons name="chevron-forward" size={20} color="#9CA3AF" />}
-              </Pressable>
+              <View>
+                {channels.map((channel, index) => {
+                  const channelKey = channel.code || channel.paymentChannel || `channel-${index}`;
+                  const isChannelSubmitting = submittingChannelCode === channelKey;
+                  const isCardsChannel = channelKey === "CARDS" || channel.mode === "components";
 
-              {processors.map((processor) => (
-                <Pressable
-                  key={processor.procId || processor.name}
-                  disabled={isSubmitting}
-                  onPress={() => onSelect(processor)}
-                  className="mb-3 flex-row items-center rounded-2xl border border-border bg-white px-4 py-4"
-                >
-                  <View className="mr-3 h-11 w-11 items-center justify-center rounded-full bg-[#F6F7F8]">
-                    <Ionicons name="wallet-outline" size={22} color="#1F2933" />
+                  return (
+                  <Pressable
+                    key={channelKey}
+                    disabled={Boolean(submittingChannelCode)}
+                    onPress={() => onSelect(channel)}
+                    className={`mb-3 flex-row items-center rounded-2xl border px-4 py-4 ${
+                      isChannelSubmitting ? "border-primary bg-[#FFF8F3]" : "border-border bg-white"
+                    }`}
+                  >
+                    <View className="mr-3 h-11 w-11 items-center justify-center rounded-full bg-[#F6F7F8]">
+                      <Ionicons
+                        name={channel.mode === "components" ? "card-outline" : "wallet-outline"}
+                        size={22}
+                        color="#1F2933"
+                      />
+                    </View>
+                    <View className="flex-1">
+                      <Text className="text-base font-bold text-ink">{channelLabel(channel)}</Text>
+                      <Text className="mt-1 text-xs text-muted" numberOfLines={2}>
+                        {isChannelSubmitting
+                          ? "Starting secure checkout..."
+                          : isCardsChannel
+                            ? "Requires backend HTTPS card setup. Use GCash or Maya for now."
+                            : channelDescription(channel)}
+                      </Text>
+                    </View>
+                    {isChannelSubmitting ? (
+                      <ActivityIndicator color="#FF6400" />
+                    ) : (
+                      <Ionicons name="chevron-forward" size={20} color="#9CA3AF" />
+                    )}
+                  </Pressable>
+                  );
+                })}
+
+                {!channels.length ? (
+                  <View className="rounded-2xl bg-[#F6F7F8] px-4 py-5">
+                    <Text className="text-sm font-semibold text-muted">No payment channels are available right now.</Text>
                   </View>
-                  <View className="flex-1">
-                    <Text className="text-base font-bold text-ink">{processorName(processor)}</Text>
-                    <Text className="mt-1 text-xs text-muted" numberOfLines={1}>
-                      {processor.description || processor.type || processor.procId}
-                    </Text>
-                  </View>
-                  <Ionicons name="chevron-forward" size={20} color="#9CA3AF" />
-                </Pressable>
-              ))}
+                ) : null}
+              </View>
             </ScrollView>
           )}
         </View>
@@ -305,13 +331,15 @@ export default function CartScreen({ navigation }) {
   const addLockRef = useRef(false);
   const [addingRecommendationId, setAddingRecommendationId] = useState(null);
   const [paymentSheetVisible, setPaymentSheetVisible] = useState(false);
-  const [paymentProcessors, setPaymentProcessors] = useState([]);
+  const [paymentChannels, setPaymentChannels] = useState([]);
   const [isLoadingProcessors, setIsLoadingProcessors] = useState(false);
-  const [isCreatingPayment, setIsCreatingPayment] = useState(false);
+  const [submittingPaymentChannel, setSubmittingPaymentChannel] = useState(null);
   const user = useAuthStore((state) => state.user);
   const isGuest = useAuthStore((state) => state.isGuest);
   const address = useAddressStore((state) => state.address);
   const restaurant = useCartStore((state) => state.restaurant);
+  const restaurantSlug = useCartStore((state) => state.restaurantSlug);
+  const restaurantId = useCartStore((state) => state.restaurantId);
   const branchId = useCartStore((state) => state.branchId);
   const items = useCartStore((state) => state.items);
   const quote = useCartStore((state) => state.quote);
@@ -319,7 +347,14 @@ export default function CartScreen({ navigation }) {
   const updateQuantity = useCartStore((state) => state.updateQuantity);
   const addItem = useCartStore((state) => state.addItem);
   const loadQuote = useCartStore((state) => state.loadQuote);
+  const hydrateServerCart = useCartStore((state) => state.hydrateServerCart);
   const loadOrders = useOrderStore((state) => state.loadOrders);
+
+  useFocusEffect(
+    useCallback(() => {
+      hydrateServerCart().catch(() => null);
+    }, [hydrateServerCart])
+  );
 
   const subtotal = useMemo(() => localSubtotal(items), [items]);
   const itemCount = useMemo(() => items.reduce((sum, item) => sum + item.quantity, 0), [items]);
@@ -416,7 +451,7 @@ export default function CartScreen({ navigation }) {
         title: "Delivery address required",
         message: "Please select your delivery location before payment."
       });
-      navigation.navigate("Address", { returnToHome: true });
+      navigation.navigate(user && !isGuest ? "SavedAddresses" : "Address", { returnToHome: true });
       return;
     }
 
@@ -424,33 +459,99 @@ export default function CartScreen({ navigation }) {
       setIsLoadingProcessors(true);
       setPaymentSheetVisible(true);
       const freshQuote = await loadQuote();
-      const freshTotal = numericMoney(freshQuote?.total ?? freshQuote?.totals?.total ?? freshQuote?.labels?.total, totalAmount);
-      const data = await listDragonpayProcessors(freshTotal);
-      setPaymentProcessors(data?.processors || []);
+
+      if (freshQuote && freshQuote.canOrder === false) {
+        throw new Error(freshQuote.message || "This cart cannot be ordered right now.");
+      }
+      const data = await listXenditChannels();
+      setPaymentChannels(normalizeXenditChannels(data?.channels || []));
     } catch (error) {
       showToast({
         type: "error",
         title: "Payment methods unavailable",
-        message: error?.response?.data?.error || error?.message || "Please try again in a moment."
+        message: getApiErrorMessage(error, "Please try again in a moment.")
       });
     } finally {
       setIsLoadingProcessors(false);
     }
   };
 
-  const createPayment = async (processor) => {
-    try {
-      setIsCreatingPayment(true);
-      const deliveryAddress = address?.address || address?.addressLine1;
-      const payload = {
-        useCart: true,
-        branchId: branchId || restaurant?.branchId || restaurant?.activeBranchId || restaurant?.defaultBranchId || restaurant?.branches?.[0]?.id,
-        deliveryAddress,
-        procId: processor?.procId || ""
-      };
+  const createPayment = async (channel) => {
+    const selectedChannelCode = channelCode(channel);
 
-      const data = await createDragonpayPayment(payload);
-      const redirectUrl = data?.payment?.redirectUrl;
+    try {
+      setSubmittingPaymentChannel(selectedChannelCode);
+      const deliveryAddress = address?.address || address?.addressLine1;
+      const freshQuote = await loadQuote();
+
+      if (freshQuote && freshQuote.canOrder === false) {
+        throw new Error(freshQuote.message || "This cart cannot be ordered right now.");
+      }
+
+      const payloadVariants = buildXenditSessionPayloadVariants({
+        channel,
+        deliveryAddress,
+        branchId: branchId || restaurant?.branchId || restaurant?.activeBranchId || restaurant?.defaultBranchId || restaurant?.branches?.[0]?.id,
+        restaurantSlug: restaurantSlug || restaurant?.slug,
+        restaurantId: restaurantId || restaurant?.id
+      });
+
+      const data = await createXenditPaymentSessionWithFallback(payloadVariants);
+      const session = extractXenditPaymentSession(data);
+
+      if (typeof __DEV__ !== "undefined" && __DEV__) {
+        console.log("[xendit-session]", {
+          channel: channelCode(channel),
+          mode: session.mode,
+          paymentId: session.paymentId,
+          cardCheckoutUrl: session.cardCheckoutUrl,
+          hasComponentsSdkKey: Boolean(session.componentsSdkKey)
+        });
+      }
+
+      const pendingMessage = "We will update your orders as soon as Dart confirms the payment.";
+
+      if (isComponentsChannel(channel) || session.mode === "components") {
+        const cardCheckout = resolveCardCheckoutTarget(session);
+
+        if (!cardCheckout) {
+          throw new Error(
+            "Card checkout is not configured on the server. Backend must return payment.cardCheckoutUrl for mobile CARDS."
+          );
+        }
+
+        setPaymentSheetVisible(false);
+
+        if (cardCheckout.type === "url" && cardCheckout.hostedBy === "external") {
+          navigation.navigate("PaymentWebView", {
+            url: cardCheckout.value,
+            title: channelLabel(channel),
+            paymentId: session.paymentId,
+            orderId: session.orderId,
+            providerReference: session.providerReference,
+            pendingMessage
+          });
+        } else {
+          navigation.navigate("PaymentCard", {
+            url: cardCheckout.type === "url" ? cardCheckout.value : null,
+            componentsSdkKey: session.componentsSdkKey || null,
+            title: channelLabel(channel),
+            paymentId: session.paymentId,
+            orderId: session.orderId,
+            providerReference: session.providerReference,
+            pendingMessage
+          });
+        }
+        loadOrders().catch(() => null);
+        showToast({
+          type: "success",
+          title: "Card checkout ready",
+          message: "Enter your card details securely inside Dart."
+        });
+        return;
+      }
+
+      const redirectUrl = session.redirectUrl;
 
       if (!redirectUrl) {
         throw new Error("Payment redirect URL missing.");
@@ -459,24 +560,39 @@ export default function CartScreen({ navigation }) {
       setPaymentSheetVisible(false);
       navigation.navigate("PaymentWebView", {
         url: redirectUrl,
-        title: processorName(processor),
-        orderId: data?.order?.id || data?.payment?.orderId || data?.payment?.metadata?.orderId || null,
-        paymentId: data?.payment?.id || data?.payment?.paymentId || null
+        title: channelLabel(channel),
+        paymentId: session.paymentId,
+        orderId: session.orderId,
+        providerReference: session.providerReference,
+        pendingMessage
       });
       loadOrders().catch(() => null);
       showToast({
         type: "success",
         title: "Payment ready",
-        message: "Complete the Dragonpay payment inside Dart."
+        message: "Complete the Xendit payment inside Dart."
       });
     } catch (error) {
+      const originErrorMessage = getCardCheckoutOriginErrorMessage(error);
+
+      if (isCardCheckoutOriginError(error)) {
+        showToast({
+          type: "error",
+          title: "Cards unavailable",
+          message:
+            originErrorMessage ||
+            "Card payments need a backend HTTPS origin fix. Please use GCash or Maya for now."
+        });
+        return;
+      }
+
       showToast({
         type: "error",
         title: "Payment failed",
-        message: error?.response?.data?.error || error?.message || "Unable to start payment."
+        message: getApiErrorMessage(error, "Unable to start payment.")
       });
     } finally {
-      setIsCreatingPayment(false);
+      setSubmittingPaymentChannel(null);
     }
   };
 
@@ -656,8 +772,8 @@ export default function CartScreen({ navigation }) {
       <PaymentMethodSheet
         amountLabel={totalLabel}
         isLoading={isLoadingProcessors}
-        isSubmitting={isCreatingPayment}
-        processors={paymentProcessors}
+        submittingChannelCode={submittingPaymentChannel}
+        channels={paymentChannels}
         visible={paymentSheetVisible}
         onClose={() => setPaymentSheetVisible(false)}
         onSelect={createPayment}

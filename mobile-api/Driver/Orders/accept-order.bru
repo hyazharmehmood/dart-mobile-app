@@ -1,0 +1,29 @@
+meta {
+  name: accept-order
+  type: http
+  seq: 2
+}
+
+post {
+  url: {{baseUrl}}/api/driver/orders/{{orderId}}/accept
+  body: none
+  auth: none
+}
+
+headers {
+  Authorization: Bearer {{driverAccessToken}}
+}
+
+docs {
+  Claims a READY order for the authenticated driver. First accept wins.
+
+  No pre-created assignment or expiresAt is required in broadcast mode.
+
+  Success returns order (driver_assigned) and assignment (accepted).
+
+  Errors:
+  - 403: order not available to this driver
+  - 409: order already claimed or no longer READY
+
+  See docs/driver-dispatch-mobile-api.md
+}

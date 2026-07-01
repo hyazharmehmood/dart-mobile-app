@@ -20,6 +20,24 @@ export async function getOrder(orderId) {
   return response.data;
 }
 
+export async function getOrderTracking(orderId) {
+  try {
+    const response = await api.get(`/api/customer/orders/${orderId}/tracking`);
+    return response.data;
+  } catch (error) {
+    if (error?.response?.status === 404) {
+      const detail = await getOrder(orderId);
+      return {
+        order: detail?.order || detail,
+        tracking: null,
+        source: "order-detail-fallback"
+      };
+    }
+
+    throw error;
+  }
+}
+
 export async function getOrderEvents(orderId) {
   const response = await api.get(`/api/orders/${orderId}/events`);
   return response.data;

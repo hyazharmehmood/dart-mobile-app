@@ -1,0 +1,31 @@
+meta {
+  name: update-order-status
+  type: http
+  seq: 3
+}
+
+patch {
+  url: {{baseUrl}}/api/driver/orders/{{orderId}}/status
+  body: json
+  auth: none
+}
+
+headers {
+  Authorization: Bearer {{driverAccessToken}}
+  Content-Type: application/json
+}
+
+body:json {
+  {
+    "status": "PICKED_UP"
+  }
+}
+
+docs {
+  Required driver delivery flow after accept:
+  DRIVER_ASSIGNED -> PICKED_UP -> ON_THE_WAY -> DELIVERED.
+
+  The web app opens device navigation after ON_THE_WAY. The mobile app should open
+  its navigation intent after this request succeeds, using order.deliveryLocation.
+  Driver earning is created when status becomes DELIVERED.
+}

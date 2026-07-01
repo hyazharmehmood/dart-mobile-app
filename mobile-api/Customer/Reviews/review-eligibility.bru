@@ -1,0 +1,15 @@
+meta {
+  name: review-eligibility
+  type: http
+  seq: 1
+}
+
+get {
+  url: {{baseUrl}}/api/customer/orders/{{orderId}}/review-eligibility
+  body: none
+  auth: none
+}
+
+headers {
+  Authorization: Bearer {{customerAccessToken}}
+}

@@ -1,0 +1,24 @@
+meta {
+  name: upload-dispute-evidence
+  type: http
+  seq: 6
+}
+
+post {
+  url: {{baseUrl}}/api/driver/disputes/{{disputeId}}/evidence
+  body: multipartForm
+  auth: none
+}
+
+headers {
+  Authorization: Bearer {{driverAccessToken}}
+}
+
+body:multipart-form {
+  file: @file(/path/to/evidence.jpg)
+  body: Photo from the delivery attempt
+}
+
+docs {
+  Uploads dispute evidence and creates a participant message with the attachment.
+}

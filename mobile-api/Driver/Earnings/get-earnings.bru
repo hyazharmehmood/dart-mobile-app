@@ -1,0 +1,23 @@
+meta {
+  name: get-earnings
+  type: http
+  seq: 1
+}
+
+get {
+  url: {{baseUrl}}/api/driver/earnings?period=daily
+  body: none
+  auth: none
+}
+
+headers {
+  Authorization: Bearer {{driverAccessToken}}
+}
+
+docs {
+  Earnings screen contract.
+
+  period accepts: daily, weekly, monthly.
+  Response includes period.earnings, period.deliveryEarnings, period.deliveries,
+  overall stats, and recentTransactions for the latest account activity.
+}

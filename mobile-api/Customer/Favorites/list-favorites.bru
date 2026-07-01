@@ -1,0 +1,19 @@
+meta {
+  name: list-favorites
+  type: http
+  seq: 1
+}
+
+get {
+  url: {{baseUrl}}/api/customer/favorites
+  body: none
+  auth: none
+}
+
+headers {
+  Authorization: Bearer {{customerAccessToken}}
+}
+
+docs {
+  Returns saved restaurants for the authenticated customer, newest first.
+}

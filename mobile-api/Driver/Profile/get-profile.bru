@@ -1,0 +1,21 @@
+meta {
+  name: get-profile
+  type: http
+  seq: 1
+}
+
+get {
+  url: {{baseUrl}}/api/driver/profile
+  body: none
+  auth: none
+}
+
+headers {
+  Authorization: Bearer {{driverAccessToken}}
+}
+
+docs {
+  Account home contract. Returns profile name, image, email, phone, document statuses,
+  and driverProfile fields including isAvailable, ratingAverage, ratingCount, vehicle,
+  preferredZone, currentZone, and currentLocation.
+}

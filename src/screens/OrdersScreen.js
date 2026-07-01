@@ -1,4 +1,4 @@
-import { useEffect } from "react";
+import { useEffect, useMemo, useState } from "react";
 import Ionicons from "@expo/vector-icons/Ionicons";
 import { Pressable, RefreshControl, ScrollView, StatusBar, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
@@ -6,6 +6,15 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import Button from "../components/ui/Button";
 import { useToast } from "../components/ui/ToastProvider";
 import useOrderStore from "../store/useOrderStore";
+import { isActiveOrder } from "../utils/orderTracking";
+
+const FILTERS = [
+  { key: "", label: "All" },
+  { key: "ACTIVE", label: "Active" },
+  { key: "DELIVERED", label: "Delivered" },
+  { key: "CANCELLED", label: "Cancelled" },
+  { key: "REFUNDED", label: "Refunded" }
+];
 
 function statusLabel(status) {
   return String(status || "pending").replace(/_/g, " ").toLowerCase();
@@ -21,6 +30,8 @@ function totalLabel(order) {
 }
 
 function OrderRow({ order, onPress }) {
+  const active = isActiveOrder(order);
+
   return (
     <Pressable onPress={() => onPress(order)} className="mb-3 rounded-2xl border border-border bg-white px-4 py-4 active:opacity-80">
       <View className="flex-row items-start justify-between">
@@ -32,8 +43,10 @@ function OrderRow({ order, onPress }) {
             {order.orderNumber || order.id}
           </Text>
         </View>
-        <View className="rounded-full bg-[#FFF0E5] px-3 py-1">
-          <Text className="text-xs font-bold capitalize text-primary">{statusLabel(order.status)}</Text>
+        <View className={`rounded-full px-3 py-1 ${active ? "bg-primary" : "bg-[#FFF0E5]"}`}>
+          <Text className={`text-xs font-bold capitalize ${active ? "text-white" : "text-primary"}`}>
+            {active ? "Track live" : statusLabel(order.status)}
+          </Text>
         </View>
       </View>
       <View className="mt-4 flex-row items-center justify-between">
@@ -48,12 +61,19 @@ function OrderRow({ order, onPress }) {
 
 export default function OrdersScreen({ navigation }) {
   const { showToast } = useToast();
+  const [statusFilter, setStatusFilter] = useState("");
   const orders = useOrderStore((state) => state.orders);
   const isLoading = useOrderStore((state) => state.isLoading);
   const loadOrders = useOrderStore((state) => state.loadOrders);
 
   const refresh = () => {
-    loadOrders().catch((error) => {
+    const params = { page: 1, limit: statusFilter === "ACTIVE" ? 30 : 20 };
+
+    if (statusFilter && statusFilter !== "ACTIVE") {
+      params.status = statusFilter;
+    }
+
+    loadOrders(params).catch((error) => {
       showToast({
         type: "error",
         title: "Orders unavailable",
@@ -62,9 +82,17 @@ export default function OrdersScreen({ navigation }) {
     });
   };
 
+  const displayedOrders = useMemo(() => {
+    if (statusFilter !== "ACTIVE") {
+      return orders;
+    }
+
+    return orders.filter(isActiveOrder);
+  }, [orders, statusFilter]);
+
   useEffect(() => {
     refresh();
-  }, []);
+  }, [statusFilter]);
 
   const goBack = () => {
     if (navigation.canGoBack()) {
@@ -76,6 +104,11 @@ export default function OrdersScreen({ navigation }) {
   };
 
   const openOrder = (order) => {
+    if (isActiveOrder(order)) {
+      navigation.navigate("OrderTracking", { orderId: order.id, order });
+      return;
+    }
+
     navigation.navigate("OrderDetail", { orderId: order.id, order });
   };
 
@@ -99,8 +132,19 @@ export default function OrdersScreen({ navigation }) {
         contentContainerStyle={{ padding: 20, paddingBottom: 40 }}
         refreshControl={<RefreshControl refreshing={isLoading} onRefresh={refresh} />}
       >
-        {orders.length ? (
-          orders.map((order) => <OrderRow key={order.id || order.orderNumber} order={order} onPress={openOrder} />)
+        <ScrollView horizontal showsHorizontalScrollIndicator={false} className="mb-4">
+          {FILTERS.map((filter) => (
+            <Pressable
+              key={filter.key || "all"}
+              onPress={() => setStatusFilter(filter.key)}
+              className={`mr-2 rounded-full px-4 py-2 ${statusFilter === filter.key ? "bg-primary" : "bg-white"}`}
+            >
+              <Text className={`text-sm font-bold ${statusFilter === filter.key ? "text-white" : "text-ink"}`}>{filter.label}</Text>
+            </Pressable>
+          ))}
+        </ScrollView>
+        {displayedOrders.length ? (
+          displayedOrders.map((order) => <OrderRow key={order.id || order.orderNumber} order={order} onPress={openOrder} />)
         ) : (
           <View className="mt-20 items-center">
             <View className="h-24 w-24 items-center justify-center rounded-full bg-[#FFF4ED]">

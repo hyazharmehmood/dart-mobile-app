@@ -95,6 +95,46 @@ const useOrderStore = create((set, get) => ({
       }
     });
   },
+  receiveDriverLocation: (payload) => {
+    const orderId = payload?.orderId;
+    if (!orderId) {
+      return;
+    }
+
+    const current = get().orderDetails[orderId] || get().orders.find((order) => order.id === orderId) || {};
+    const nextDriver = {
+      ...(current.driver || {}),
+      latitude: payload.latitude,
+      longitude: payload.longitude,
+      heading: payload.heading,
+      name: payload.driverName || current.driver?.name || current.driverName,
+      updatedAt: payload.updatedAt || new Date().toISOString()
+    };
+
+    const patch = {
+      driver: nextDriver,
+      driverLatitude: payload.latitude,
+      driverLongitude: payload.longitude,
+      driverHeading: payload.heading,
+      driverName: nextDriver.name
+    };
+
+    set({
+      orders: get().orders.map((order) => (order.id === orderId ? { ...order, ...patch } : order)),
+      orderDetails: {
+        ...get().orderDetails,
+        [orderId]: {
+          ...current,
+          ...patch,
+          id: orderId
+        }
+      }
+    });
+  },
+  getActiveOrder: () => get().orders.find((order) => {
+    const status = String(order?.statusCode || order?.status || "").toUpperCase();
+    return status && !["DELIVERED", "CANCELLED", "REFUNDED", "COMPLETED", "FAILED"].some((marker) => status.includes(marker));
+  }) || null,
   resetOrders: () =>
     set({
       orders: [],

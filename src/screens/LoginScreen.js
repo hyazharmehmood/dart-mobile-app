@@ -29,6 +29,7 @@ export default function LoginScreen({ navigation }) {
   const continueAsGuest = useAuthStore((state) => state.continueAsGuest);
   const isLoading = useAuthStore((state) => state.isLoading);
   const syncSelectedAddress = useAddressStore((state) => state.syncSelectedAddress);
+  const loadAddresses = useAddressStore((state) => state.loadAddresses);
   const hasUnsyncedAddress = useAddressStore((state) => state.hasUnsyncedAddress);
   const setFromProfile = useAddressStore((state) => state.setFromProfile);
   const { showToast } = useToast();
@@ -52,6 +53,8 @@ export default function LoginScreen({ navigation }) {
 
       if (hasUnsyncedAddress) {
         await syncSelectedAddress().catch(() => null);
+      } else {
+        await loadAddresses().catch(() => null);
       }
 
       navigation.reset({
@@ -141,7 +144,7 @@ export default function LoginScreen({ navigation }) {
                   />
                   <Text className="text-sm text-[#4B4B4B]">Remember for 30 days</Text>
                 </Pressable>
-                <Pressable>
+                <Pressable onPress={() => navigation.navigate("ForgotPassword")}>
                   <Text className="text-sm font-bold text-primary">Forgot password</Text>
                 </Pressable>
               </View>

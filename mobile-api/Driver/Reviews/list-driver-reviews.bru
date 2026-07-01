@@ -1,0 +1,22 @@
+meta {
+  name: list-driver-reviews
+  type: http
+  seq: 1
+}
+
+get {
+  url: {{baseUrl}}/api/driver/reviews
+  body: none
+  auth: none
+}
+
+headers {
+  Authorization: Bearer {{driverAccessToken}}
+}
+
+docs {
+  Ratings & reviews screen contract. Returns published customer delivery feedback,
+  including deliveryRating, comment, customer avatar/name, orderNumber, and createdAt.
+
+  The aggregate ratingAverage and ratingCount remain in GET /api/driver/profile.
+}

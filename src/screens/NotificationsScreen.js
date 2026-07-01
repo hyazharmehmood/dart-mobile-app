@@ -42,6 +42,11 @@ function notificationOrderId(notification) {
   return notification?.orderId || notification?.metadata?.orderId || notification?.data?.orderId || null;
 }
 
+function notificationDisputeId(notification) {
+  const routeDisputeId = String(notification?.route || notification?.metadata?.route || "").match(/\/disputes\/([^/?#]+)/)?.[1];
+  return notification?.disputeId || notification?.metadata?.disputeId || notification?.data?.disputeId || routeDisputeId || null;
+}
+
 function NotificationRow({ notification, onPress }) {
   const isUnread = !notification.readAt;
   const icon = notificationIcon(notification);
@@ -129,6 +134,12 @@ export default function NotificationsScreen({ navigation }) {
     }
 
     const orderId = notificationOrderId(notification);
+    const disputeId = notificationDisputeId(notification);
+
+    if (disputeId) {
+      navigation.navigate("DisputeDetail", { disputeId });
+      return;
+    }
 
     if (orderId) {
       navigation.navigate("OrderDetail", { orderId });
